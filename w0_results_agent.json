@@ -1,0 +1,10 @@
+{
+  "success_rate": 1.0,
+  "ci": [
+    0.7,
+    1.0
+  ],
+  "json_valid_rate": 1.0,
+  "n_effective": 10,
+  "reps": 3
+}

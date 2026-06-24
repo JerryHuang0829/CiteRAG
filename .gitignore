@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# --- 模型權重 / 快取（大檔；fastembed 首次使用會自動下載到 hf_cache，勿入庫）---
+hf_cache/
+models/
+
+# --- 索引（ingest.py 產生的衍生檔；clone 後執行 python rag/ingest.py 重建）---
+index/
+
+# --- 祕密 / 環境變數 ---
+.env
+.env.*
+!.env.example
+
+# --- 作業系統 / 編輯器 ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- 暫存 ---
+*.log
+_tmp_*.py
+_smoke_*.py

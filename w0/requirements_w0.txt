@@ -1,0 +1,7 @@
+# W0 依賴
+# 01_llm_bench.py / 02_agent_success.py / 03_cloud_probe.py：只用 Python stdlib（urllib/json/random）+ Ollama，無需安裝任何套件。
+# 下面僅 04_embed_recall.py（可選、較重）需要：
+numpy>=1.26
+sentence-transformers>=5.0
+opencc-python-reimplemented>=0.1.7
+# 註：bge-m3 在 CPU 上載入較慢，04 屬可選、可稍後做。

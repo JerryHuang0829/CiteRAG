@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CiteRAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app/style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 側邊欄 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">📚</div>
+        <div>
+          <div class="brand-title">CiteRAG</div>
+          <div class="brand-sub">本地 · CPU · 零雲端</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-tab="rag">
+          <span class="nav-ico">📄</span><span>文件問答</span>
+        </button>
+        <button class="nav-item" data-tab="agent">
+          <span class="nav-ico">🤖</span><span>AI Agent</span>
+        </button>
+        <button class="nav-item" data-tab="vlm">
+          <span class="nav-ico">🖼️</span><span>圖片理解</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="foot-label">模型 / 狀態</div>
+        <div id="chips" class="chips"><span class="chip chip-muted">連線中…</span></div>
+      </div>
+    </aside>
+
+    <!-- 主內容 -->
+    <main class="main">
+      <!-- RAG -->
+      <section class="panel active" id="panel-rag">
+        <header class="panel-head">
+          <h1>文件問答</h1>
+          <p>檢索金融文件並帶頁碼引用作答；查無依據會拒答，引用護欄會剝除範圍外頁碼。</p>
+        </header>
+        <div class="composer">
+          <input id="rag-q" class="text-input" placeholder="例：鴻海 2022 全年 EPS 是多少？" autocomplete="off" />
+          <button id="rag-btn" class="btn-primary">送出</button>
+        </div>
+        <div class="examples" id="rag-ex">
+          <span>試試：</span>
+          <button class="chip-btn">鴻海 2022 全年 EPS 是多少？</button>
+          <button class="chip-btn">興櫃股票市場是何時成立的？</button>
+          <button class="chip-btn">台積電 2023 EPS 是多少？</button>
+        </div>
+        <div id="rag-out" class="output"></div>
+      </section>
+
+      <!-- Agent -->
+      <section class="panel" id="panel-agent">
+        <header class="panel-head">
+          <h1>AI Agent</h1>
+          <p>程式碼編排單步 Agent：自己選工具（查文件 / 查指標 / 建筆記），顯示每步軌跡。</p>
+        </header>
+        <div class="composer">
+          <input id="agent-q" class="text-input" placeholder="例：鴻海 2022 EPS 多少？順便幫我記一筆追蹤下季毛利率" autocomplete="off" />
+          <button id="agent-btn" class="btn-primary">執行</button>
+        </div>
+        <div class="examples" id="agent-ex">
+          <span>試試：</span>
+          <button class="chip-btn">鴻海 2022 EPS 多少？順便幫我記一筆追蹤下季毛利率</button>
+          <button class="chip-btn">查興櫃市場何時成立，並把答案記成一筆筆記</button>
+        </div>
+        <div id="agent-out" class="output"></div>
+      </section>
+
+      <!-- VLM -->
+      <section class="panel" id="panel-vlm">
+        <header class="panel-head">
+          <h1>圖片理解 (VLM)</h1>
+          <p>上傳設備銘牌 / 儀表等圖片，由 Gemma 視覺模型讀出文字與數值。示範「影像→VLM、文字→LLM」模型分流。</p>
+        </header>
+        <div class="vlm-grid">
+          <label class="dropzone" id="vlm-drop">
+            <input type="file" id="vlm-file" accept="image/*" hidden />
+            <div id="vlm-placeholder" class="dz-placeholder">
+              <div class="dz-ico">⬆️</div>
+              <div>點擊或拖曳上傳圖片</div>
+            </div>
+            <img id="vlm-preview" class="dz-preview" alt="" hidden />
+          </label>
+          <div class="vlm-side">
+            <input id="vlm-q" class="text-input" placeholder="問題（留空＝讀出所有文字與數值）" autocomplete="off" />
+            <button id="vlm-btn" class="btn-primary">讀圖</button>
+            <div id="vlm-out" class="output"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app/app.js"></script>
+</body>
+</html>

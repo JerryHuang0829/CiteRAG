@@ -1,0 +1,28 @@
+{"id": "h1", "question": "鴻海 2022 全年 EPS 是多少？", "answerable": true, "gold": ["10.21"], "category": "factual"}
+{"id": "h2", "question": "鴻海 2022 全年合併營收是多少？", "answerable": true, "gold": ["6.627", "6.6兆", "6兆"], "category": "factual"}
+{"id": "h3", "question": "鴻海 2022 全年淨利是多少？", "answerable": true, "gold": ["1415", "1,415"], "category": "factual"}
+{"id": "h4", "question": "鴻海 2022 第四季 EPS 是多少？", "answerable": true, "gold": ["2.88"], "category": "factual"}
+{"id": "h5", "question": "鴻海 2022 第四季毛利率是多少？", "answerable": true, "gold": ["5.66"], "category": "factual"}
+{"id": "h6", "question": "鴻海 2022 第四季營收是多少？", "answerable": true, "gold": ["1.963"], "category": "factual"}
+{"id": "h7", "question": "鴻海 2022 年底帳上現金有多少？", "answerable": true, "gold": ["1.06"], "category": "factual"}
+{"id": "h8", "question": "鴻海 2022 全年資本支出是多少？", "answerable": true, "gold": ["979"], "category": "exact-term"}
+{"id": "h9", "question": "鴻海法說會的董事長是誰？", "answerable": true, "gold": ["劉揚偉"], "category": "factual"}
+{"id": "h10", "question": "鴻海的財務長是誰？", "answerable": true, "gold": ["黃德才"], "category": "factual"}
+{"id": "h11", "question": "鴻海 2022 全年營收年增率約多少？", "answerable": true, "gold": ["11", "一成"], "category": "factual"}
+{"id": "h12", "question": "鴻海 2022 第四季歸屬母公司淨利是多少？", "answerable": true, "gold": ["400"], "category": "exact-term"}
+{"id": "h13", "question": "鴻海 2022 年底的負債比例是多少？", "answerable": true, "gold": ["60"], "category": "exact-term"}
+{"id": "h14", "question": "鴻海法說會的發言人是誰？", "answerable": true, "gold": ["巫俊毅", "James"], "category": "factual"}
+{"id": "e1", "question": "興櫃股票市場是何時成立的？", "answerable": true, "gold": ["91年", "91/1/2", "民國91", "2002"], "category": "factual"}
+{"id": "e2", "question": "興櫃市場累計有多少家次登錄？", "answerable": true, "gold": ["1326", "1,326"], "category": "exact-term"}
+{"id": "e3", "question": "興櫃有多少家公司轉上市或上櫃？", "answerable": true, "gold": ["776"], "category": "exact-term"}
+{"id": "e4", "question": "截至 7 月底興櫃掛牌公司家數有多少？", "answerable": true, "gold": ["256"], "category": "exact-term"}
+{"id": "q1", "question": "興櫃股票市場設立的主要目的是什麼？", "answerable": true, "gold": ["合法", "安全", "透明", "未上市"], "category": "qualitative"}
+{"id": "q2", "question": "興櫃股票的交易方式是什麼？", "answerable": true, "gold": ["議價"], "category": "qualitative"}
+{"id": "q3", "question": "興櫃股票有沒有單日漲跌幅限制？", "answerable": true, "gold": ["無漲跌", "無限制", "沒有漲", "不限"], "category": "trap"}
+{"id": "q4", "question": "鴻海對 2023 年全年的營運展望如何？", "answerable": true, "gold": ["持平", "中性", "保守"], "category": "qualitative"}
+{"id": "q5", "question": "鴻海 2023 年在電動車（EV）方面有什麼布局？", "answerable": true, "gold": ["EV", "電動車", "北美", "電池"], "category": "qualitative"}
+{"id": "x1", "question": "鴻海泰國電動車工廠初期的年產能是多少？", "answerable": true, "gold": ["5萬"], "category": "exact-term"}
+{"id": "x2", "question": "鴻海 2022 年集團車用零組件營收是多少？", "answerable": true, "gold": ["200億", "200"], "category": "exact-term"}
+{"id": "r1", "question": "台積電 2023 年的 EPS 是多少？", "answerable": false, "gold": [], "category": "refuse"}
+{"id": "r2", "question": "鴻海 2025 年的營收預估是多少？", "answerable": false, "gold": [], "category": "refuse"}
+{"id": "r3", "question": "鴻海 2023 年全年的 EPS 數字是多少？", "answerable": false, "gold": [], "category": "refuse"}
