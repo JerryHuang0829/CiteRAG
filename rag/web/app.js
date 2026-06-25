@@ -71,19 +71,42 @@ async function ask(q) {
   out.innerHTML = html + `</div>`;
 }
 
-// ---------- Agent ----------
+// ---------- Agent（多輪對話） ----------
+let agentHistory = [];   // [{role,content}]；每次請求帶最近幾輪供「它/那家」代名詞解析
+
+function agentTurn(cls, html) {
+  const div = document.createElement("div");
+  div.className = "turn " + cls;
+  div.innerHTML = html;
+  $("#agent-out").appendChild(div);
+  div.scrollIntoView({ block: "nearest" });
+  return div;
+}
+
 async function runAgent(q) {
-  const out = $("#agent-out");
   q = (q || $("#agent-q").value).trim();
   if (!q) return;
-  $("#agent-q").value = q;
+  $("#agent-q").value = "";
   const btn = $("#agent-btn");
   btn.disabled = true;
-  const stop = showLoading(out, "Agent 推論中（多步，每步約 30–60 秒）…");
-  const { ok, status, data } = await postJSON("/agent", { message: q });
-  stop();
+
+  agentTurn("turn-user", `<div class="bubble">${escapeHtml(q)}</div>`);
+  const card = agentTurn("turn-bot",
+    `<div class="card loading"><div class="spinner"></div>`
+    + `<div>Agent 推論中（多步，每步約 30–60 秒）…</div>`
+    + `<div class="elapsed" id="elp-a">0.0s</div></div>`);
+  const t0 = Date.now();
+  const iv = setInterval(() => {
+    const e = $("#elp-a"); if (e) e.textContent = ((Date.now() - t0) / 1000).toFixed(1) + "s";
+  }, 100);
+
+  const { ok, status, data } = await postJSON("/agent", { message: q, history: agentHistory });
+  clearInterval(iv);
   btn.disabled = false;
-  if (!ok) return renderError(out, data, status);
+  if (!ok) {
+    card.innerHTML = `<div class="error">⚠️ ${escapeHtml(data.error || ("HTTP " + status))}</div>`;
+    return;
+  }
 
   let html = `<div class="card">`;
   if (data.trace && data.trace.length) {
@@ -96,7 +119,18 @@ async function runAgent(q) {
   }
   html += `<div class="final-answer"><div class="final-label">✅ 最終答案</div>`
     + `<div class="answer">${highlightCites(data.answer)}</div></div></div>`;
-  out.innerHTML = html;
+  card.innerHTML = html;
+  card.scrollIntoView({ block: "nearest" });
+
+  agentHistory.push({ role: "user", content: q }, { role: "assistant", content: data.answer });
+  if (agentHistory.length > 6) agentHistory = agentHistory.slice(-6);   // 只留最近 3 輪
+}
+
+function clearAgent() {
+  agentHistory = [];
+  $("#agent-out").innerHTML = "";
+  $("#agent-q").value = "";
+  $("#agent-q").focus();
 }
 
 // ---------- 圖片理解 (VLM) ----------
@@ -161,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#rag-btn").addEventListener("click", () => ask());
   $("#rag-q").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
   $("#agent-btn").addEventListener("click", () => runAgent());
+  $("#agent-clear").addEventListener("click", () => clearAgent());
   $("#agent-q").addEventListener("keydown", e => { if (e.key === "Enter") runAgent(); });
   $("#vlm-btn").addEventListener("click", () => runVlm());
 });

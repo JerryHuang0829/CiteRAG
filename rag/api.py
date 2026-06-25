@@ -33,8 +33,15 @@ class AskReq(BaseModel):
     k: int | None = Field(None, ge=1, le=20)
 
 
+class Msg(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=_MAX_TEXT)
+
+
 class AgentReq(BaseModel):
     message: str = Field(..., min_length=1, max_length=_MAX_TEXT)
+    # 前端持有對話、每次帶最近幾輪（無狀態 server）；讓「它/那家」等代名詞可解析。
+    history: list[Msg] | None = Field(None, max_length=12)
 
 
 class VlmReq(BaseModel):
@@ -84,7 +91,9 @@ def ask(req: AskReq):
 
 @app.post("/agent")
 def run_agent(req: AgentReq):
-    final, trace = agent.run(req.message, verbose=False)
+    # 只保留最近 6 則（3 輪），控制 4B 的 context（num_ctx=4096）
+    history = [m.model_dump() for m in (req.history or [])][-6:] or None
+    final, trace = agent.run(req.message, history=history, verbose=False)
     return {"answer": final, "trace": trace}
 
 

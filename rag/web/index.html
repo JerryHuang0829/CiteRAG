@@ -63,16 +63,18 @@
       <section class="panel" id="panel-agent">
         <header class="panel-head">
           <h1>AI Agent</h1>
-          <p>程式碼編排單步 Agent：自己選工具（查文件 / 查指標 / 建筆記），顯示每步軌跡。</p>
+          <p>程式碼編排單步 Agent：自己選工具（查文件 / 查指標 / 建筆記），顯示每步軌跡。支援多輪對話——可用「它 / 那家公司」接續上一題。</p>
         </header>
         <div class="composer">
-          <input id="agent-q" class="text-input" placeholder="例：鴻海 2022 EPS 多少？順便幫我記一筆追蹤下季毛利率" autocomplete="off" />
+          <input id="agent-q" class="text-input" placeholder="例：台積電 2023 EPS 多少？　接著可問「那它營收呢」" autocomplete="off" />
           <button id="agent-btn" class="btn-primary">執行</button>
+          <button id="agent-clear" class="btn-ghost" title="清除對話記憶，開始新對話">清除</button>
         </div>
         <div class="examples" id="agent-ex">
-          <span>試試：</span>
+          <span>試試（依序點，示範多輪）：</span>
+          <button class="chip-btn">台積電 2023 EPS 多少？</button>
+          <button class="chip-btn">那它的營收呢？</button>
           <button class="chip-btn">鴻海 2022 EPS 多少？順便幫我記一筆追蹤下季毛利率</button>
-          <button class="chip-btn">查興櫃市場何時成立，並把答案記成一筆筆記</button>
         </div>
         <div id="agent-out" class="output"></div>
       </section>

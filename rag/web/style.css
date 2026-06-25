@@ -149,6 +149,21 @@ body {
 .final-answer { border-left: 3px solid var(--green); padding-left: 16px; margin-top: 6px; }
 .final-label { color: var(--green); font-weight: 700; font-size: 13px; margin-bottom: 4px; }
 
+/* Agent 多輪對話串 */
+.turn { margin-bottom: 14px; }
+.turn-user { display: flex; justify-content: flex-end; }
+.turn-user .bubble {
+  background: var(--accent); color: #fff; border-radius: 14px 14px 4px 14px;
+  padding: 10px 16px; max-width: 78%; box-shadow: 0 4px 12px rgba(79,70,229,.28);
+  white-space: pre-wrap; word-break: break-word;
+}
+.btn-ghost {
+  background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 12px; padding: 0 18px; font: inherit; cursor: pointer; white-space: nowrap;
+  transition: border .15s, color .15s, background .15s;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
 /* 載入中 / 錯誤 */
 .loading { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .spinner {

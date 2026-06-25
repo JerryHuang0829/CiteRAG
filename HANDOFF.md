@@ -2,9 +2,9 @@
 
 當前狀態快照（非變更日誌）。每 session 結束覆寫更新。
 
-- 更新時間：2026-06-24
-- 階段：**W0–W3 ✅ ＋ 工程強化 A1–D2 ✅ ＋ RAG 優化 ①②③ ✅ ＋ E3 打包(README/.gitignore/requirements) ✅ ＋ CI gate ✅**。
-  下一步：**E2 一頁 case study → E4 git init（最後）**；之後選配 C1 雲端 router（待 key）/ 測試集擴充。
+- 更新時間：2026-06-25
+- 階段：**W0–W3 ✅ ＋ 工程強化 A1–D2 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector 後端 ✅ ＋ 多輪對話記憶 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ git/GitHub 已上線（JerryHuang0829/CiteRAG）**。
+  下一步：**E2 一頁 case study**；之後選配 C1 雲端 router（待 key）/ 測試集擴充。
 
 ---
 
@@ -28,6 +28,7 @@
   - **③ eval CI gate**：`tests/`（pytest）+ `.github/workflows/ci.yml`；雲端跑確定性測試、本地跑需 index/Ollama 的 gate。
 - **結構化 DB 層（FinMind，`findata.py`）**：agent 的 `lookup_metric` 由 mock 改接真實 FinMind；新增 `compare`（跨公司比較/排名/篩選）、`stock_price`（即時股價）工具，涵蓋全市場 ~2500 家（TaiwanStockInfo 名→碼）。「**數字走 DB、文字走 RAG、agent 自動分流**」；磁碟快取 `.findata_cache.json`（git 忽略）省 API 額度。實測：台積電 2023 EPS 32.34、跨公司排名、台積電股價 2390/近一年+144%。
 - **向量資料庫後端（`pgstore.py`）**：FAISS 之外新增可切換的 **pgvector**（`CITERAG_PGVECTOR=1`；Postgres+pgvector docker 容器 citerag-pg），多了 **SQL metadata 過濾**（如 `retrieve(q, source=...)` 只查某來源文件，FAISS 做不到）+ 持久化；FAISS 維持預設。實測過濾生效、FAISS 路徑無回歸、雲端 pytest 21 passed。psycopg2 直接格式化向量字串(免 pgvector py 套件)。
+- **多輪對話記憶（輕量）**：agent `run/_events/run_iter` 加 `history` 參數（`[{role,content}]`），messages＝`SYSTEM + history + 本輪`，SYSTEM 加代名詞解析提示。前端持有對話、每次帶最近 3 輪（無狀態 server；`api.py` `AgentReq.history`＋角色/長度驗證＋server 端再裁 6 則）。`web/` Agent 分頁改成對話串（user 泡泡 + 工具軌跡 + 清除鈕）。`agent.py` 無參數啟動＝多輪 REPL。實測：先問「台積電 2023 EPS」→ 再問「那它的營收呢」，agent 把「它」解析為台積電且連年份 2023 一起帶過去（lookup_metric 營收 2023＝2.162 兆），CLI/HTTP 兩路皆過。**邊界**：只塞前文 Q/A（非完整多輪 ReAct），4B + num_ctx=4096 下控制 context；逾 3 輪或長對話可靠度未驗。
 - **E3 打包**：`README.md`（架構圖/quickstart/評測報告卡/failure cases）、`.gitignore`、`requirements.txt`。
 
 ## 三、關鍵實測數字（本機，可重現／seed 固定）
@@ -51,10 +52,10 @@
 ## 五、已知問題 / 待辦
 
 - **E2 一頁 case study 未產出**（把上面 failure cases 寫成顧問敘事；補 JD「需求→AI 方案」軸線）。
-- **E4 git init 未做**（`.gitignore` 已就位，git init 留最後）。
 - **C1 雲端 router 未接**（JD「串接雲端 API」；免費金鑰未申請；`core` 僅本地 Ollama）。
 - 測試集偏小（檢索 n=12 / golden 28）、僅 2 份 PDF → 擴題是 reranker/hybrid 終局與收窄 CI 的前提。
-- `TOP_K=4`（eval 顯示 k=5 較穩）；n8n/Dify、STT/TTS/影像生成 未碰（多模態 2/5）。
+- `TOP_K=5`（已對齊 eval MAIN_K）；n8n/Dify、STT/TTS/影像生成 未碰（多模態 2/5）。
+- 多輪只塞前文 Q/A、上限 3 輪；長對話／4B 多輪可靠度未系統性評測（無 multi-turn golden）。
 - `w0_results_agent.json` 為舊 schema，待重跑刷新。
 
 ## 六、檔案
@@ -77,6 +78,5 @@
 ## 八、下一步（待 user 選）
 
 1. **E2 一頁 case study**（顧問敘事 + 4 個 failure cases；CP 值最高的對外敘事）。
-2. **E4 git init**（最後一步；`.gitignore` 已就位，先驗證不會誤推 hf_cache/models/index）。
-3. **C1 雲端 router**（待免費 Groq/Gemini key；provider 抽象 + 本地 vs 雲端對照表）。
-4. 測試集擴充 + `TOP_K→5` + 重跑全 eval；2 分鐘 demo 影片。
+2. **C1 雲端 router**（待免費 Groq/Gemini key；provider 抽象 + 本地 vs 雲端對照表）。
+3. 測試集擴充（含 multi-turn golden）+ 重跑全 eval；2 分鐘 demo 影片。
