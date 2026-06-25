@@ -78,6 +78,25 @@ LLM/VLM 推論走外部 **Ollama** 服務；嵌入與重排走 **fastembed**（C
 
 ---
 
+## 向量後端：FAISS（預設）/ pgvector（可切換）
+
+支援兩種向量後端，環境變數 `CITERAG_PGVECTOR=1` 切換：
+
+- **FAISS**（預設）：`IndexFlatIP` 暴力精確搜——78 chunks 的最佳解、零外部依賴、clone 即跑。
+- **pgvector**（向量資料庫）：PostgreSQL + pgvector，多了**持久化 + SQL metadata 過濾**（如 `retrieve(q, source="…")` 只查某來源文件，FAISS 做不到）+ 可水平擴展。
+
+**設計判斷**：小語料用 FAISS（不過早上資料庫）、需 metadata 過濾或規模化才切 pgvector——重點是**知道何時用哪個**。
+
+啟用 pgvector：
+```bash
+docker run -d --name citerag-pg -e POSTGRES_PASSWORD=citerag -e POSTGRES_DB=citerag -p 5432:5432 pgvector/pgvector:pg16
+pip install psycopg2-binary
+cd rag && CITERAG_PGVECTOR=1 python ingest.py     # 嵌入寫進 pgvector（取代 FAISS 索引）
+CITERAG_PGVECTOR=1 uvicorn api:app --port 8000    # 用 pgvector 後端啟動
+```
+
+---
+
 ## 快速開始
 
 前置：[Ollama](https://ollama.com)、conda、約 4GB 磁碟（模型）。

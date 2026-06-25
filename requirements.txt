@@ -15,4 +15,7 @@ fastapi==0.138.0             # api.py REST API + 自製前端
 uvicorn==0.49.0
 pydantic==2.13.4
 
+# 可選：pgvector 向量資料庫後端（CITERAG_PGVECTOR=1 時才需要；預設用 FAISS）
+# psycopg2-binary==2.9.12
+
 # 開發/測試：pip install pytest（見 .github/workflows/ci.yml）
