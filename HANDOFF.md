@@ -26,6 +26,7 @@
   - **① Hybrid 檢索**（`core` BM25 手刻 + RRF；`USE_HYBRID` 預設開）。`eval_hybrid.py` 兩層級 A/B。
   - **② Golden set + RAG Triad**：`golden.jsonl`（28 題版本化）+ `golden.py`（驗證器）+ `eval_rag_triad.py`（手刻 RAGAS-style：answer correctness / context recall / precision / faithfulness / answer relevancy）。
   - **③ eval CI gate**：`tests/`（pytest）+ `.github/workflows/ci.yml`；雲端跑確定性測試、本地跑需 index/Ollama 的 gate。
+- **結構化 DB 層（FinMind，`findata.py`）**：agent 的 `lookup_metric` 由 mock 改接真實 FinMind；新增 `compare`（跨公司比較/排名/篩選）、`stock_price`（即時股價）工具，涵蓋全市場 ~2500 家（TaiwanStockInfo 名→碼）。「**數字走 DB、文字走 RAG、agent 自動分流**」；磁碟快取 `.findata_cache.json`（git 忽略）省 API 額度。實測：台積電 2023 EPS 32.34、跨公司排名、台積電股價 2390/近一年+144%。
 - **E3 打包**：`README.md`（架構圖/quickstart/評測報告卡/failure cases）、`.gitignore`、`requirements.txt`。
 
 ## 三、關鍵實測數字（本機，可重現／seed 固定）
@@ -58,7 +59,7 @@
 ## 六、檔案
 
 - `PLAN.md`(SSOT) / `CLAUDE.md`(守則) / `HANDOFF.md`(本檔) / `README.md`(對外) / `requirements.txt` / `.gitignore`
-- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/`vlm_b64`）/ `agent.py` / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
+- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
   - eval：`eval_retrieval.py` / `eval_rerank.py` / **`eval_hybrid.py`** / `eval_generation.py` / **`eval_rag_triad.py`** / `eval_agent.py` / `eval_agent_hard.py`
 - `tests/`：pytest（雲端確定性 + 本地 gate）　|　`.github/workflows/ci.yml`
 - `w0/`：benchmark 腳本 + json　|　`data/`：公開 PDF + sample_nameplate.png　|　`index/`：faiss + chunks(78)

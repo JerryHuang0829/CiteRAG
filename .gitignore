@@ -24,7 +24,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# --- 暫存 ---
+# --- 暫存 / 快取 ---
 *.log
 _tmp_*.py
 _smoke_*.py
+.findata_cache.json
