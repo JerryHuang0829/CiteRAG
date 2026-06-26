@@ -24,8 +24,13 @@ Thumbs.db
 .vscode/
 .idea/
 
+# --- 本機開發守則 / 筆記（不入庫）---
+CLAUDE.md
+
 # --- 暫存 / 快取 ---
 *.log
+*.out
 _tmp_*.py
 _smoke_*.py
+_t_*.py
 .findata_cache.json
