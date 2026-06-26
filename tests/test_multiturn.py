@@ -83,3 +83,18 @@ def test_multiturn_resolution_end_to_end():
     _, trace = agent.run("那 2021 年呢？", history, verbose=False)
     turn = {"expect_tool": "lookup_metric", "expect_args": ["鴻海", "2021"], "expect_answer": ["10.05"]}
     assert resolved(turn, trace), f"多輪解析失敗：tools={_tools(trace)} args={_args_str(trace)}"
+
+
+@pytest.mark.local
+def test_numeric_guardrail_no_silent_fabrication():
+    # #6：股價多輪 follow-up 不可『沒查就編數字』。verify_numbers 護欄保證──
+    # 要嘛逼出 stock_price 拿到真值（257.x），要嘛誠實拒答；絕不裸顯示臆測數字。
+    import agent
+    q1 = "台積電現在股價多少？"
+    f1, _ = agent.run(q1, [], verbose=False)
+    history = [{"role": "user", "content": q1}, {"role": "assistant", "content": f1}]
+    f2, t2 = agent.run("那鴻海呢？", history, verbose=False)
+    tools = _tools(t2)
+    got_verified = ("stock_price" in tools) and ("257" in f2)
+    refused = ("無法" in f2) or ("查證" in f2)
+    assert got_verified or refused, f"既未查證也未拒答（疑似裸幻覺）：tools={tools} ans={f2}"

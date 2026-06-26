@@ -357,6 +357,41 @@ def verify_citations(answer: str, hit_pages) -> tuple:
     return cleaned, stripped
 
 
+# 值型數字（整數/小數，容忍千分位逗號）；用於 verify_numbers 的數值溯源
+_NUM_TOKEN = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _num_set(text: str) -> set:
+    out = set()
+    for tok in _NUM_TOKEN.findall(text or ""):
+        try:
+            out.add(round(float(tok.replace(",", "")), 4))
+        except ValueError:
+            pass
+    return out
+
+
+def verify_numbers(answer: str, grounded_text: str) -> list:
+    """回傳 answer 中『無法溯源到 grounded_text』的值型數字（疑似生成端幻覺）。
+
+    與 verify_citations 對稱：頁碼要在檢索命中集，數值要在「工具結果＋題目＋對話歷史」內。
+    容忍四捨五入（±0.05 或 ±1%）；排除年份（1900–2100 的整數，非『值』）以免誤判。
+    Agent 用：數值類答案若含未溯源數字→退回強制查工具，擋『沒查就編數字』。"""
+    grounded = _num_set(grounded_text)
+    bad = []
+    for tok in _NUM_TOKEN.findall(answer or ""):
+        try:
+            v = round(float(tok.replace(",", "")), 4)
+        except ValueError:
+            continue
+        if v.is_integer() and 1900 <= v <= 2100:
+            continue   # 年份不視為需溯源的「值」（且通常已在題目/工具內）
+        if any(abs(v - g) <= max(0.05, abs(g) * 0.01) for g in grounded):
+            continue
+        bad.append(tok)
+    return bad
+
+
 class OllamaError(RuntimeError):
     """Ollama 連線或 HTTP 失敗時拋出，與程式邏輯錯誤區隔，讓 CLI 印可讀訊息而非裸 traceback。"""
 

@@ -89,6 +89,8 @@ def _events(user_msg: str, history=None):
     messages.append({"role": "user", "content": user_msg})
     called = set()
     allowed_pages = set()   # 本軌跡 search_filings 命中的頁碼（用於剝除 final 的幻覺頁碼）
+    grounded = " ".join([user_msg] + [m.get("content", "") for m in (history or [])])  # 數值溯源範圍：題目＋歷史，逐步加工具結果
+    corrections = 0   # 數值未溯源時的更正次數（上限 1，逼一次工具查證）
     stuck = 0   # 連續「沒成功執行工具/沒給 final」的步數
     for _ in range(MAX_TURNS):
         if stuck >= 2:
@@ -106,7 +108,22 @@ def _events(user_msg: str, history=None):
             continue
 
         if step.get("action") == "final":
-            yield ("final", core.verify_citations(step.get("answer", ""), allowed_pages)[0])
+            ans = core.verify_citations(step.get("answer", ""), allowed_pages)[0]
+            ungrounded = core.verify_numbers(ans, grounded)
+            if ungrounded:
+                if corrections < 1:           # 數字沒查就編 → 退回逼一次工具查證（複用迴圈）
+                    corrections += 1
+                    stuck = 0
+                    messages.append({"role": "user",
+                                     "content": f"你的答案出現未經工具查證的數字 {ungrounded}，可能是臆測。"
+                                                "請務必先呼叫對應工具（stock_price 查股價、lookup_metric 查財報、"
+                                                "compare 跨公司比較）取得真實數值，不要直接給 final；查不到就如實說無法確定。"})
+                    continue
+                if not called:                # 更正後仍未溯源、且全程沒查工具＝純臆測 → 拒答，不展示假數字
+                    yield ("final", "（無法由工具查證此問題的數值，請稍後再試或提供更明確的查詢條件。）")
+                    return
+                ans += "（註：部分數字未能由工具佐證，請以實際查詢為準。）"   # 有查工具但數字對不上 → 保留答案加註
+            yield ("final", ans)
             return
 
         if step.get("action") == "tool":
@@ -146,6 +163,7 @@ def _events(user_msg: str, history=None):
             result = fn(**{k: args[k] for k in passed})
             if name == "search_filings":
                 allowed_pages |= search_filings.last_pages
+            grounded += " " + str(result)   # 工具結果納入數值溯源範圍
             yield ("tool", name, args, result)
             messages.append({"role": "assistant", "content": raw})
             messages.append({"role": "user", "content": f"工具 {name} 結果：{result}"})
@@ -162,7 +180,11 @@ def _events(user_msg: str, history=None):
         step = json.loads(core.chat(messages, as_json=True))
         ans = step.get("answer") if isinstance(step, dict) else None
         if ans:
-            yield ("final", core.verify_citations(ans, allowed_pages)[0])
+            ans = core.verify_citations(ans, allowed_pages)[0]
+            if core.verify_numbers(ans, grounded):   # 收尾仍含未溯源數字：沒查工具→拒答，有查→加註
+                ans = ("（無法由工具查證此問題的數值，請稍後再試或提供更明確的查詢條件。）"
+                       if not called else ans + "（註：部分數字未能由工具佐證，請以實際查詢為準。）")
+            yield ("final", ans)
             return
     except Exception:
         pass

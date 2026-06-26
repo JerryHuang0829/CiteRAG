@@ -43,7 +43,8 @@
   - **解析準確率（follow-up）**：history-ON **0.714 [0.425,1.000]** vs OFF **0.286 [0.000,0.571]**；**Δ(ON−OFF) +0.429 [+0.143,+0.857] 顯著**（配對 bootstrap，CI 不跨 0）→ 記憶確實買到跨輪解析力。
   - **答案準確率（全 13 turns）**：**0.923 [0.769,1.000]**（12/13；唯一錯＝mt6）。
   - **誠實校正（n=7 小樣本）**：①ON 被「嚴格 tool 比對」低估——mt5「那營收呢」實際把台積電+聯電+2023 都帶對且答案正確，只因走 2×lookup 而非 compare 被判 miss（語意解析口徑 ON≈0.857）；②OFF 被「好猜案例」高估——mt1「它」猜台積電、mt4「那聯電呢」猜 2023 剛好對（in-text/可猜）→ 真實 Δ 應更大。兩邊都讓 Δ 偏保守，結論方向穩固。
-- **③ CI**：雲端確定性套件 **30 passed**（+9 多輪：golden schema + 評測計分邏輯用合成 trace 測，不跑 LLM）；本地 gate **3 passed**（golden grounding + context recall≥0.7 + 多輪解析端到端 59s）。
+  - **數值幻覺護欄（verify_numbers，修 failure #6）**：mt6 第二輪幻覺已由護欄處理——更正後逼出 stock_price 拿真值（257.5），或 4B 固執不查時誠實拒答；**「裸顯示未溯源數字」已成 0**。解析/答案準確率「點估計不變」（mt6 仍非 257、仍判 miss），改變的是 **failure mode：靜默編造 → 修正或拒答**（非決定性：能否救回真值取決於更正 retry 是否誘發工具呼叫）。
+- **③ CI**：雲端確定性套件 **36 passed**（+9 多輪 schema/計分邏輯、+6 verify_numbers 數值溯源，皆合成資料不跑 LLM）；本地 gate **4 passed**（golden grounding + context recall≥0.7 + 多輪解析端到端 + 數值護欄「修正或拒答」各 ~60s）。
 
 ## 四、failure-case 素材（root cause → fix → 數字/行為）
 
@@ -52,7 +53,7 @@
 3. **hybrid 被 reranker 遮蔽**：檢索層顯著、端到端打平 → 拆兩層級量測才看清，效益隨語料規模上升。
 4. **小模型條件式/拒答失誤**：4B 對「若 X 才 Y」易失敗、會把民國年誤算西元；golden r2「2025 營收」該拒答卻沒拒、h8「資本支出 979」已在 context 卻沒抽出 → 可定位的生成端缺口（更強抽取/拒答 prompt）。
 5. **deterministic 揭穿 LLM judge**：faithfulness(4B)=0.667 < 客觀 correctness 0.893，judge 把答對的判不忠實 → 本地小模型 judge 不可靠，需獨立/更強 judge 校準。
-6. **多輪意圖延續會誘發幻覺**：mt6「台積電股價→那鴻海呢」第二輪 4B **沒呼叫 stock_price、直接在 final 編出 112.50 元/+23.7%**（實際 257.5 元）→ 多輪 context 讓模型「憑記憶作答」而捏造。被**答案準確率（expect 子字串 257）當場抓到**（13 題唯一 miss），印證結構化工具結果比生成端可信、且 answer-check 有擋幻覺之效。修法方向：股價/數值類強制走工具、final 數值對照工具結果。
+6. **多輪意圖延續會誘發幻覺（已修）**：mt6「台積電股價→那鴻海呢」第二輪 4B 沒呼叫 stock_price、直接在 final 編出 112.50 元/+23.7%（實際 257.5）→ 多輪 context 誘發「憑記憶作答」。先被 answer-check 抓到，再以 **`core.verify_numbers` 護欄修正**（與 `verify_citations` 對稱：頁碼要在檢索集、數值要在「工具結果＋題目＋歷史」內）：agent final 含未溯源數字 → 退回逼一次工具查證；更正後仍沒查工具就**拒答不展示假數字**。實測：有時逼出 stock_price 得 257.5、有時拒答，**裸幻覺＝0**。誠實邊界：能否救回真值非決定性（取決於 4B 是否聽從更正），但「不展示未溯源數字」是硬保證。
 
 ## 五、已知問題 / 待辦
 
@@ -66,7 +67,7 @@
 ## 六、檔案
 
 - `PLAN.md`(SSOT) / `CLAUDE.md`(守則) / `HANDOFF.md`(本檔) / `README.md`(對外) / `requirements.txt` / `.gitignore`
-- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price）/ **`pgstore.py`**（pgvector 向量資料庫後端，可切換） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
+- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/**`verify_numbers`**/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price）/ **`pgstore.py`**（pgvector 向量資料庫後端，可切換） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
   - eval：`eval_retrieval.py` / `eval_rerank.py` / **`eval_hybrid.py`** / `eval_generation.py` / **`eval_rag_triad.py`** / `eval_agent.py` / `eval_agent_hard.py` / **`eval_multiturn.py`＋`golden_multiturn.jsonl`**（多輪解析 ON/OFF ablation，結果 `multiturn_results.json`）
 - `tests/`：pytest（雲端確定性 + 本地 gate）　|　`.github/workflows/ci.yml`
 - `w0/`：benchmark 腳本 + json　|　`data/`：公開 PDF + sample_nameplate.png　|　`index/`：faiss + chunks(78)
