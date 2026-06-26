@@ -1,0 +1,244 @@
+{
+  "n_convo": 6,
+  "n_turn": 13,
+  "n_followup": 7,
+  "resolution_on": 0.7142857142857143,
+  "resolution_on_ci": [
+    0.42500000000000016,
+    1.0
+  ],
+  "resolution_off": 0.2857142857142857,
+  "resolution_off_ci": [
+    0.0,
+    0.5714285714285714
+  ],
+  "resolution_delta": 0.4285714285714286,
+  "resolution_delta_ci": [
+    0.1428571428571428,
+    0.8571428571428571
+  ],
+  "answer_acc": 0.9230769230769231,
+  "answer_acc_ci": [
+    0.7692307692307693,
+    1.0
+  ],
+  "rows": [
+    {
+      "id": "mt1",
+      "phenom": "代名詞「它」→公司＋年份carry",
+      "turn": 0,
+      "q": "台積電 2023 EPS 是多少？",
+      "followup": false,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"台積電\", \"metric\": \"EPS\", \"year\": \"2023\"}",
+      "answer": "台積電 2023 年 EPS 為 32.34 元",
+      "answer_ok": true
+    },
+    {
+      "id": "mt1",
+      "phenom": "代名詞「它」→公司＋年份carry",
+      "turn": 1,
+      "q": "那它的營收呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2023\"}",
+      "answer": "台積電 2023 年營收為 2.162 兆元",
+      "answer_ok": true,
+      "resolved_on": true,
+      "resolved_off": true,
+      "off_tools": [
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2023\"}"
+    },
+    {
+      "id": "mt2",
+      "phenom": "省略：同公司同指標換年",
+      "turn": 0,
+      "q": "鴻海 2022 全年 EPS 多少？",
+      "followup": false,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"鴻海\", \"metric\": \"EPS\", \"year\": \"2022\"}",
+      "answer": "鴻海 2022 全年 EPS 為 10.21 元",
+      "answer_ok": true
+    },
+    {
+      "id": "mt2",
+      "phenom": "省略：同公司同指標換年",
+      "turn": 1,
+      "q": "那 2021 年呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"鴻海\", \"metric\": \"EPS\", \"year\": \"2021\"}",
+      "answer": "鴻海 2021 年 EPS 為 10.05 元",
+      "answer_ok": true,
+      "resolved_on": true,
+      "resolved_off": false,
+      "off_tools": [
+        "lookup_metric",
+        "lookup_metric",
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2021\"} {\"company\": \"台積電\", \"metric\": \"淨利\", \"year\": \"2021\"} {\"company\": \"台積電\", \"metric\": \"毛利率\", \"y"
+    },
+    {
+      "id": "mt3",
+      "phenom": "換指標：同公司同年",
+      "turn": 0,
+      "q": "聯發科 2023 EPS 多少？",
+      "followup": false,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"聯發科\", \"metric\": \"EPS\", \"year\": \"2023\"}",
+      "answer": "聯發科 2023 年 EPS 為 48.51 元",
+      "answer_ok": true
+    },
+    {
+      "id": "mt3",
+      "phenom": "換指標：同公司同年",
+      "turn": 1,
+      "q": "那它的毛利率呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"聯發科\", \"metric\": \"毛利率\", \"year\": \"2023\"}",
+      "answer": "聯發科 2023 年毛利率為 47.84%",
+      "answer_ok": true,
+      "resolved_on": true,
+      "resolved_off": false,
+      "off_tools": [
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"台積電\", \"metric\": \"毛利率\", \"year\": \"2023\"}"
+    },
+    {
+      "id": "mt4",
+      "phenom": "recency：換公司後「它」＝最近那家",
+      "turn": 0,
+      "q": "台積電 2023 EPS 多少？",
+      "followup": false,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"台積電\", \"metric\": \"EPS\", \"year\": \"2023\"}",
+      "answer": "台積電 2023 年 EPS 為 32.34 元",
+      "answer_ok": true
+    },
+    {
+      "id": "mt4",
+      "phenom": "recency：換公司後「它」＝最近那家",
+      "turn": 1,
+      "q": "那聯電呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"聯電\", \"metric\": \"EPS\", \"year\": \"2023\"}",
+      "answer": "聯電 2023 年 EPS 為 4.93 元",
+      "answer_ok": true,
+      "resolved_on": true,
+      "resolved_off": true,
+      "off_tools": [
+        "lookup_metric",
+        "lookup_metric",
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"聯電\", \"metric\": \"營收\", \"year\": \"2023\"} {\"company\": \"聯電\", \"metric\": \"淨利\", \"year\": \"2023\"} {\"company\": \"聯電\", \"metric\": \"毛利率\", \"year"
+    },
+    {
+      "id": "mt4",
+      "phenom": "recency：換公司後「它」＝最近那家",
+      "turn": 2,
+      "q": "那它的營收呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"聯電\", \"metric\": \"營收\", \"year\": \"2023\"}",
+      "answer": "聯電 2023 年營收為 2225 億元",
+      "answer_ok": true,
+      "resolved_on": true,
+      "resolved_off": false,
+      "off_tools": [
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2023\"}"
+    },
+    {
+      "id": "mt5",
+      "phenom": "compare 後續換指標",
+      "turn": 0,
+      "q": "台積電和聯電 2023 誰的 EPS 比較高？",
+      "followup": false,
+      "tools": [
+        "lookup_metric",
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"台積電\", \"metric\": \"EPS\", \"year\": \"2023\"} {\"company\": \"聯電\", \"metric\": \"EPS\", \"year\": \"2023\"}",
+      "answer": "台積電的EPS（32.34元）比聯電的EPS（4.93元）高",
+      "answer_ok": true
+    },
+    {
+      "id": "mt5",
+      "phenom": "compare 後續換指標",
+      "turn": 1,
+      "q": "那營收呢？",
+      "followup": true,
+      "tools": [
+        "lookup_metric",
+        "lookup_metric"
+      ],
+      "args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2023\"} {\"company\": \"聯電\", \"metric\": \"營收\", \"year\": \"2023\"}",
+      "answer": "台積電2023年營收為2.162兆元，聯電為2225億元，台積電營收遠高於聯電",
+      "answer_ok": true,
+      "resolved_on": false,
+      "resolved_off": false,
+      "off_tools": [
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"台積電\", \"metric\": \"營收\", \"year\": \"2023\"}"
+    },
+    {
+      "id": "mt6",
+      "phenom": "intent 延續：股價省略換公司",
+      "turn": 0,
+      "q": "台積電現在股價多少？",
+      "followup": false,
+      "tools": [
+        "stock_price"
+      ],
+      "args": "{\"company\": \"台積電\"}",
+      "answer": "台積電現股價為 2390.0 元（2026-06-25 收盤），當日無漲跌，近一年漲幅為 +143.4%",
+      "answer_ok": true
+    },
+    {
+      "id": "mt6",
+      "phenom": "intent 延續：股價省略換公司",
+      "turn": 1,
+      "q": "那鴻海呢？",
+      "followup": true,
+      "tools": [],
+      "args": "",
+      "answer": "鴻海現股價為 112.50 元（2026-06-25 收盤），當日無漲跌，近一年漲幅為 +23.7%",
+      "answer_ok": false,
+      "resolved_on": false,
+      "resolved_off": false,
+      "off_tools": [
+        "lookup_metric",
+        "lookup_metric",
+        "lookup_metric"
+      ],
+      "off_args": "{\"company\": \"鴻海\", \"metric\": \"營收\", \"year\": \"2023\"} {\"company\": \"鴻海\", \"metric\": \"淨利\", \"year\": \"2023\"} {\"company\": \"鴻海\", \"metric\": \"毛利率\", \"year"
+    }
+  ]
+}

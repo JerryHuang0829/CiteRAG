@@ -39,6 +39,10 @@
 - **Reranker ablation（n=12）**：bge-base ΔMRR +0.271 [+0.014,+0.507] 顯著、hit@3 1.000；jina-v2 ΔMRR 觸 0 不顯著 → 預設採 **bge-reranker-base**（n=12 結論，待擴題定論）。
 - **② RAG Triad（golden 28 題）**：answer correctness **0.893 [0.786,1.000]**；**context recall 1.000**（檢索不漏）；context precision 0.490；faithfulness(4B judge) 0.667（**noisy proxy，judge 把多題答對的判不忠實→再證 4B judge 不可靠**）；relevancy 1.000。分類：factual/qualitative 1.000、exact-term 0.875、refuse 0.667、trap 0.000(n=1)。
 - **Agent 難情境（n=8）**：hard success 0.875 [0.625,1.000]。
+- **多輪對話記憶（multi-turn golden：6 段對話 / 13 turns / 7 follow-ups，含 ON vs OFF ablation）**：
+  - **解析準確率（follow-up）**：history-ON **0.714 [0.425,1.000]** vs OFF **0.286 [0.000,0.571]**；**Δ(ON−OFF) +0.429 [+0.143,+0.857] 顯著**（配對 bootstrap，CI 不跨 0）→ 記憶確實買到跨輪解析力。
+  - **答案準確率（全 13 turns）**：**0.923 [0.769,1.000]**（12/13；唯一錯＝mt6）。
+  - **誠實校正（n=7 小樣本）**：①ON 被「嚴格 tool 比對」低估——mt5「那營收呢」實際把台積電+聯電+2023 都帶對且答案正確，只因走 2×lookup 而非 compare 被判 miss（語意解析口徑 ON≈0.857）；②OFF 被「好猜案例」高估——mt1「它」猜台積電、mt4「那聯電呢」猜 2023 剛好對（in-text/可猜）→ 真實 Δ 應更大。兩邊都讓 Δ 偏保守，結論方向穩固。
 - **③ CI**：雲端確定性套件 21 passed；本地 gate（golden grounding + context recall≥0.7）2 passed。
 
 ## 四、failure-case 素材（root cause → fix → 數字/行為）
@@ -48,6 +52,7 @@
 3. **hybrid 被 reranker 遮蔽**：檢索層顯著、端到端打平 → 拆兩層級量測才看清，效益隨語料規模上升。
 4. **小模型條件式/拒答失誤**：4B 對「若 X 才 Y」易失敗、會把民國年誤算西元；golden r2「2025 營收」該拒答卻沒拒、h8「資本支出 979」已在 context 卻沒抽出 → 可定位的生成端缺口（更強抽取/拒答 prompt）。
 5. **deterministic 揭穿 LLM judge**：faithfulness(4B)=0.667 < 客觀 correctness 0.893，judge 把答對的判不忠實 → 本地小模型 judge 不可靠，需獨立/更強 judge 校準。
+6. **多輪意圖延續會誘發幻覺**：mt6「台積電股價→那鴻海呢」第二輪 4B **沒呼叫 stock_price、直接在 final 編出 112.50 元/+23.7%**（實際 257.5 元）→ 多輪 context 讓模型「憑記憶作答」而捏造。被**答案準確率（expect 子字串 257）當場抓到**（13 題唯一 miss），印證結構化工具結果比生成端可信、且 answer-check 有擋幻覺之效。修法方向：股價/數值類強制走工具、final 數值對照工具結果。
 
 ## 五、已知問題 / 待辦
 
@@ -55,14 +60,14 @@
 - **C1 雲端 router 未接**（JD「串接雲端 API」；免費金鑰未申請；`core` 僅本地 Ollama）。
 - 測試集偏小（檢索 n=12 / golden 28）、僅 2 份 PDF → 擴題是 reranker/hybrid 終局與收窄 CI 的前提。
 - `TOP_K=5`（已對齊 eval MAIN_K）；n8n/Dify、STT/TTS/影像生成 未碰（多模態 2/5）。
-- 多輪只塞前文 Q/A、上限 3 輪；長對話／4B 多輪可靠度未系統性評測（無 multi-turn golden）。
+- 多輪只塞前文 Q/A、上限 3 輪；長對話可靠度未驗。multi-turn golden 已建（n=7 follow-up 偏小、CI 寬）→ 可擴題收窄、補 RAG 多輪與更多 recency/負例。
 - `w0_results_agent.json` 為舊 schema，待重跑刷新。
 
 ## 六、檔案
 
 - `PLAN.md`(SSOT) / `CLAUDE.md`(守則) / `HANDOFF.md`(本檔) / `README.md`(對外) / `requirements.txt` / `.gitignore`
 - `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price）/ **`pgstore.py`**（pgvector 向量資料庫後端，可切換） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
-  - eval：`eval_retrieval.py` / `eval_rerank.py` / **`eval_hybrid.py`** / `eval_generation.py` / **`eval_rag_triad.py`** / `eval_agent.py` / `eval_agent_hard.py`
+  - eval：`eval_retrieval.py` / `eval_rerank.py` / **`eval_hybrid.py`** / `eval_generation.py` / **`eval_rag_triad.py`** / `eval_agent.py` / `eval_agent_hard.py` / **`eval_multiturn.py`＋`golden_multiturn.jsonl`**（多輪解析 ON/OFF ablation，結果 `multiturn_results.json`）
 - `tests/`：pytest（雲端確定性 + 本地 gate）　|　`.github/workflows/ci.yml`
 - `w0/`：benchmark 腳本 + json　|　`data/`：公開 PDF + sample_nameplate.png　|　`index/`：faiss + chunks(78)
 - `hf_cache/`：bge-small-zh / bge-reranker-base / jina-v2 權重（git 忽略）　|　`models/`：舊快取（git 忽略）
