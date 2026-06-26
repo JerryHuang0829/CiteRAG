@@ -43,7 +43,7 @@
   - **解析準確率（follow-up）**：history-ON **0.714 [0.425,1.000]** vs OFF **0.286 [0.000,0.571]**；**Δ(ON−OFF) +0.429 [+0.143,+0.857] 顯著**（配對 bootstrap，CI 不跨 0）→ 記憶確實買到跨輪解析力。
   - **答案準確率（全 13 turns）**：**0.923 [0.769,1.000]**（12/13；唯一錯＝mt6）。
   - **誠實校正（n=7 小樣本）**：①ON 被「嚴格 tool 比對」低估——mt5「那營收呢」實際把台積電+聯電+2023 都帶對且答案正確，只因走 2×lookup 而非 compare 被判 miss（語意解析口徑 ON≈0.857）；②OFF 被「好猜案例」高估——mt1「它」猜台積電、mt4「那聯電呢」猜 2023 剛好對（in-text/可猜）→ 真實 Δ 應更大。兩邊都讓 Δ 偏保守，結論方向穩固。
-- **③ CI**：雲端確定性套件 21 passed；本地 gate（golden grounding + context recall≥0.7）2 passed。
+- **③ CI**：雲端確定性套件 **30 passed**（+9 多輪：golden schema + 評測計分邏輯用合成 trace 測，不跑 LLM）；本地 gate **3 passed**（golden grounding + context recall≥0.7 + 多輪解析端到端 59s）。
 
 ## 四、failure-case 素材（root cause → fix → 數字/行為）
 

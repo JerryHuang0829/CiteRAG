@@ -1,6 +1,6 @@
 name: eval-ci
 
-# 每次 push / PR 跑「確定性」測試（stats / 引用護欄 / BM25·RRF / golden schema）。
+# 每次 push / PR 跑「確定性」測試（stats / 引用護欄 / BM25·RRF / golden schema / 多輪計分邏輯）。
 # 不含本地 4B judge 與 Ollama（免費 runner 跑不動）——那些標 @local，本地或 self-hosted 跑。
 on:
   push:
