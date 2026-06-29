@@ -63,8 +63,8 @@ def vlm_answer(image_path, question):
 
 
 with gr.Blocks(title="CiteRAG") as demo:
-    gr.Markdown("# CiteRAG（帶頁碼引用的本地 RAG + Agent）\n"
-                "純本地 CPU + jina rerank，回答約 30–60 秒/步，請耐心等。")
+    gr.Markdown("# 本地檢索增強問答系統 CiteRAG（帶頁碼引用的 RAG + Agent）\n"
+                f"純本地 CPU + {core.RERANK_MODEL.split('/')[-1]} rerank，回答約 30–60 秒/步，請耐心等。")
 
     with gr.Tab("📄 文件問答 (RAG)"):
         rq = gr.Textbox(label="問題", placeholder="例：鴻海 2022 第四季毛利率是多少？")

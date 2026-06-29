@@ -66,3 +66,24 @@ def test_numbers_partial_mix():
     g = "EPS 32.34 元"
     bad = core.verify_numbers("EPS 32.34 元，本益比約 18.5 倍", g)
     assert bad == ["18.5"]   # 32.34 grounded、18.5 未溯源
+
+
+def test_numbers_year_blind_spot_closed():
+    # 1900–2100 的整數值（股價/筆數）不再被當年份放行；只有緊鄰「年」才豁免
+    assert core.verify_numbers("股價 2050 元", "") == ["2050"]      # 非年份語境→須溯源
+    assert core.verify_numbers("2024 年的數據", "全年 100 億元") == []  # 緊鄰「年」→豁免
+    assert core.verify_numbers("股價 2050.0 元", "") == ["2050.0"]   # .0 結尾整數也不漏
+
+
+def test_numbers_thousand_separator_not_merged():
+    # 相鄰數字以半形逗號分隔不可錯併（'12,34' 兩數，非 1234）
+    assert sorted(core._num_set("共 12,34 例")) == [12.0, 34.0]
+    assert sorted(core._num_set("營收 2,225 億")) == [2225.0]       # 正規千分位仍合併
+
+
+def test_citation_range_and_bare_multipage():
+    assert core.pages_in("見 (p.3-5)") == {3, 4, 5}                # 範圍展開
+    assert core.pages_in("見 p.3,4") == {3, 4}                     # 裸式多頁
+    # 範圍式逐頁剝除：只命中 3,4 → 5 被剝
+    cleaned, stripped = core.verify_citations("A (p.3-5) B", {3, 4})
+    assert stripped == [5] and "5" not in cleaned

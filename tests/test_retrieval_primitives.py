@@ -23,3 +23,12 @@ def test_rrf_favors_cross_list_item():
     # idx 1 在兩路排名都靠前 → 融合後最高
     fused = core._rrf([[5, 1, 2], [1, 9, 5]])
     assert max(fused, key=fused.get) == 1
+
+
+def test_bm25_cache_invalidates_on_content_change():
+    # re-ingest 換語料後 BM25 須重建（否則與 FAISS 熱讀的新 chunks 索引對不齊）
+    a = core._get_bm25([{"text": "鴻海 毛利率"}, {"text": "台積電 EPS"}])
+    b = core._get_bm25([{"text": "聯發科 營收"}])     # 不同內容/長度
+    assert b is not a and b.N == 1
+    same = core._get_bm25([{"text": "聯發科 營收"}])  # 內容相同 → 命中快取不重建
+    assert same is b

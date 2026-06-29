@@ -6,7 +6,7 @@
 端點：
   GET  /health           服務與模型資訊（不碰 Ollama）
   POST /ask    {query,k?}             → {answer, stripped_pages, sources[]}
-  POST /agent  {message}              → {answer, trace[]}
+  POST /agent  {message, history?}    → {answer, trace[]}   history＝[{role,content}] 最近數輪（多輪記憶）
   POST /vlm    {image_b64, question?} → {text}
   GET  /app                           自製前端（同源呼叫上面端點）
 """
@@ -15,6 +15,7 @@ import binascii
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 
@@ -58,6 +59,13 @@ def _ollama_error(request, exc):
 @app.exception_handler(FileNotFoundError)
 def _index_error(request, exc):
     return JSONResponse(status_code=503, content={"error": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+def _validation_error(request, exc):
+    # 驗證錯誤統一回 {error}（與其他 handler 對齊）；預設的 {detail:[...]} 前端只讀 data.error 會顯示成裸「HTTP 422」
+    msgs = "；".join(str(e.get("msg", "")) for e in exc.errors()[:3])
+    return JSONResponse(status_code=422, content={"error": f"輸入格式不符：{msgs}"})
 
 
 @app.exception_handler(Exception)

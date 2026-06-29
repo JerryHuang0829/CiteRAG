@@ -1,15 +1,16 @@
-# CiteRAG — 帶頁碼引用的本地 RAG + Agent 文件問答系統
+# 本地檢索增強問答系統 CiteRAG — 帶頁碼引用、可拒答、可溯源的 RAG + Agent 文件問答
 
-一套 **CPU-only、零雲端** 的繁體中文文件問答系統：把 PDF 變成「**帶頁碼引用、會拒答、擋幻覺**」的問答助手，並延伸出多工具 Agent 與視覺讀圖。重點不在堆語料規模，而在把一條 RAG 鏈路的每個工程決策**量化、可重現、能擋退步**。
+一套 **CPU-only、零雲端** 的繁體中文文件問答系統：把 PDF 變成「**帶頁碼引用、會拒答、擋幻覺**」的問答助手，並延伸出多工具 Agent、多輪對話記憶與視覺讀圖。重點不在堆語料規模，而在把一條 RAG 鏈路的每個工程決策**量化、可重現、能擋退步**。
 
-整條鏈路（解析 → 切塊 → 嵌入 → 檢索 → 重排 → 生成 → 護欄 → 評測）皆手刻、不依賴 LangChain/RAGAS 等高階框架黑盒，以便完全掌握每一層的行為與取捨。
+整條鏈路（解析 → 切塊 → 嵌入 → 檢索 → 重排 → 生成 → 護欄 → 評測）皆自行實作核心邏輯、不依賴 LangChain/RAGAS 等高階框架黑盒，以便完全掌握每一層的行為與取捨。
 
 ---
 
 ## 為什麼值得看
 
 - **Hybrid 檢索**：dense 向量 + BM25 稀疏，經 RRF 融合 — 補純向量對精確詞/數字/股號的 silent fail。並用配對 bootstrap 量化其效益（檢索層 **ΔMRR +0.229，95% CI 不含 0**）。
-- **引用幻覺護欄**：後處理剝除「不在本次檢索命中集合」的頁碼引用 — 擋 citation-shaped 幻覺（含多頁 `(p.3,4)` 逐頁判定）。
+- **雙層幻覺護欄**：①引用護欄剝除「不在檢索命中集」的頁碼（含多頁 `(p.3,4)`／範圍 `(p.3-5)` 逐頁判定）；②數值護欄要求 Agent 答案的每個數字都溯源到工具結果，否則退回逼查證、仍查不到就拒答 — 擋「沒查就編數字」。
+- **多輪對話記憶**：前端持有對話、每輪帶最近 3 輪（無狀態 server），代名詞／省略主詞依前文解析；ablation 量化「有記憶 vs 無」跨輪解析率 **Δ +0.571（配對 bootstrap 顯著，CI 不含 0）**。
 - **三層評測 + 信賴區間**：自寫 recall/MRR/nDCG、RAG Triad（faithfulness / context precision / recall）、Agent trajectory，全部附 **bootstrap 95% CI**，並對 0/1 退化情形改報 rule-of-three（不印假的 `[1,1]`）。
 - **評測進 CI**：GitHub Actions 在每次 push 跑確定性測試（含護欄、統計、檢索原語、golden set schema），低於門檻擋下 — 防 regression。
 - **誠實標籤**：小語料下若某優化端到端無顯著差異、或本地小模型當 judge 有偏差，一律照實報並說明原因，不誇大。
@@ -30,13 +31,13 @@
                 │     ├─▶ 檢索   dense(FAISS) ＋ BM25(稀疏) ──RRF 融合──▶ 候選 │
                 │     ├─▶ 重排   bge-reranker cross-encoder（top-N → top-k） │
                 │     ├─▶ 生成   Ollama qwen3:4b（只依參考資料、帶頁碼、拒答） │
-                │     └─▶ 護欄   剝除非檢索命中的頁碼引用（擋幻覺）            │
+                │     └─▶ 護欄   引用(頁碼∈檢索集)＋數值(數字∈工具)雙層擋幻覺 │
                 └───────────────────────────┬──────────────────────────────┘
             ┌───────────────────────────────┼───────────────────────────────┐
             ▼                               ▼                               ▼
    Agent（程式碼編排單步）           VLM 讀圖（Gemma 3:4b）          評測（rag/eval_*.py）
-   工具 + 參數驗證 + max_turns       影像 → 文字                    三層指標 + bootstrap CI
-   + 引用護欄 + 強制收尾                                            + golden set + CI gate
+   5 工具(數字→DB／文字→RAG 分流)     影像 → 文字                    三層指標 + bootstrap CI
+   + 多輪記憶 + 引用/數值雙護欄        + 模型分流                     + golden set + 多輪 ablation
 ```
 
 **離線索引建立**：PDF → PyMuPDF4LLM（帶頁碼）→ RecursiveCharacterTextSplitter → bge-small-zh 嵌入 → FAISS。
@@ -74,7 +75,7 @@
 | 介面 | Gradio／FastAPI＋自製前端／CLI | 同源服務、無 CORS |
 | 評測 | 自寫指標 + 純 stdlib bootstrap | 可重現、固定 seed |
 
-LLM/VLM 推論走外部 **Ollama** 服務；嵌入與重排走 **fastembed**（CPU）。統計、BM25、引用護欄為純 stdlib，無額外依賴。
+LLM/VLM 推論走外部 **Ollama** 服務；嵌入與重排走 **fastembed**（CPU）。統計、BM25、引用/數值護欄為純 stdlib；`core.py` 的重型依賴（faiss/fastembed/pymupdf4llm）為 **lazy import**，故這些純函式的確定性測試免載整套 ML 堆疊（雲端 CI 秒級跑完）。
 
 ---
 
@@ -94,6 +95,18 @@ pip install psycopg2-binary
 cd rag && CITERAG_PGVECTOR=1 python ingest.py     # 嵌入寫進 pgvector（取代 FAISS 索引）
 CITERAG_PGVECTOR=1 uvicorn api:app --port 8000    # 用 pgvector 後端啟動
 ```
+
+---
+
+## 多輪對話記憶 + 雙層幻覺護欄
+
+**多輪記憶**：Agent 接受對話歷史（前端持有、每輪帶最近 3 輪 = 6 則），讓「那它營收呢」的代名詞依前文解析；屬輕量設計（只塞前文 Q/A、非完整多步 ReAct），控制 4B 的 context。用 **ON vs OFF ablation**（同題配對 bootstrap）量化記憶買到的跨輪解析力：**Δ +0.571 [+0.143, +0.857]（顯著，CI 不含 0）**、答案準確率 13/13。（解析率點估計跨 run 約 0.71~0.86，因 4B 在即時股價輪非決定性；「顯著」為穩健結論。）
+
+**雙層幻覺護欄**（皆為後處理、可程式驗證的確定性護欄）：
+- **引用護欄** `verify_citations`：剝除答案中「不在本次檢索命中頁集」的頁碼（含多頁 `(p.3,4)`／範圍 `(p.3-5)` 逐頁判定）。
+- **數值護欄** `verify_numbers`：要求 Agent 答案的每個值型數字都能溯源到「本輪工具結果 ＋ 題目」（**刻意不含對話歷史**，避免上一輪輸出把幻覺數字洗白）；未溯源即退回逼一次工具查證，仍查不到就拒答，絕不展示未經查證的數字。
+
+> 設計判準：**能化約成確定性外部檢查的（頁碼 ∈ 檢索集、數字 ∈ 工具結果）才用程式護欄修**；模型推理上限類問題則誠實標為已知邊界。
 
 ---
 
@@ -201,14 +214,16 @@ python agent.py "查鴻海 EPS 並幫我記一筆筆記"      # CLI Agent
 
 ```
 rag/
-  core.py            RAG 引擎（解析/嵌入/FAISS/BM25+RRF/重排/生成/引用護欄/VLM）
-  agent.py           程式碼編排單步 Agent（工具 + 護欄）
+  core.py            RAG 引擎（解析/嵌入/FAISS/BM25+RRF/重排/生成/引用+數值雙護欄/VLM）
+  agent.py           程式碼編排單步 Agent（5 工具 + 多輪記憶 + 雙護欄）
+  findata.py         結構化 DB 查詢（FinMind：lookup_metric / compare / stock_price）
+  pgstore.py         pgvector 後端（可切換；多 SQL metadata 過濾）
   app.py             Gradio 三分頁 UI       api.py    FastAPI REST + 自製前端（web/）
   ingest.py ask.py   建索引 / CLI 問答
   stats.py           共用統計原語（bootstrap / paired bootstrap / rule-of-three）
-  golden.py golden.jsonl   版本化 golden set + 驗證器
+  golden.py golden.jsonl golden_multiturn.jsonl   版本化 golden set（單輪 + 多輪）+ 驗證器
   eval_retrieval.py eval_rerank.py eval_hybrid.py    檢索層評測
-  eval_rag_triad.py eval_agent.py eval_agent_hard.py  生成/Agent 評測
+  eval_rag_triad.py eval_agent.py eval_agent_hard.py eval_multiturn.py  生成/Agent/多輪評測
 tests/               pytest 套件（雲端確定性 + 本地 gate）
 data/                來源 PDF（公開文件）        index/   FAISS 索引（git 忽略，跑 ingest 重建）
 w0/                  動工前 benchmark（速度 / 單步成功率 / 雲端連通）

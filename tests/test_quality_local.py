@@ -6,9 +6,17 @@ faithfulness 等需 Ollama 的門檻不放這裡（CPU 數十分鐘），由 eva
 import pytest
 
 
+def _need_index():
+    # 索引是 git-ignored 衍生物；clone 後未 ingest 時 skip（把「環境未備」與「品質回歸」分開）
+    import core
+    if not core.INDEX_PATH.exists() or not core.CHUNKS_PATH.exists():
+        pytest.skip("需先在 rag/ 跑 python ingest.py 建索引")
+
+
 @pytest.mark.local
 def test_golden_set_grounded():
     # 每個 answerable 題至少一個 gold 在語料、refuse 題無 gold
+    _need_index()
     from golden import validate
     assert validate() == []
 
@@ -16,6 +24,7 @@ def test_golden_set_grounded():
 @pytest.mark.local
 def test_context_recall_baseline():
     # 檢索層 context recall：gold 是否被撈進 hits（不經 Ollama）。低於 baseline 即 fail。
+    _need_index()
     import core
     from golden import load_golden
     from eval_retrieval import norm

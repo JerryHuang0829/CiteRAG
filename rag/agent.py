@@ -4,7 +4,7 @@
 程式驗證工具名與參數 + max_turns 防迴圈 + 重複呼叫偵測。
 利用 W0 實證的「單步高可靠」而非「自由多步 ~16%」。
 
-工具：search_filings(RAG 查文字) / lookup_metric(FinMind 查結構化財務數字) / create_note(mock 建筆記)。
+工具：search_filings(RAG 查文字) / lookup_metric(FinMind 財務數字) / compare(跨公司比較/排名/篩選) / stock_price(即時/近期股價) / create_note(mock 建筆記)。
 用法（rag/）：python agent.py "鴻海 2022 全年 EPS 多少？幫我記一筆下季追蹤毛利率"
 """
 import json
@@ -18,16 +18,14 @@ sys.stdout.reconfigure(encoding="utf-8")
 _NOTES = []
 
 
-def search_filings(query: str) -> str:
+def search_filings(query: str):
+    # 回 (顯示字串, 命中頁碼集)：頁碼由 _events 在呼叫點就地取用——不從顯示字串 re-parse（避免內文
+    # p.N 污染白名單），也不掛 module-level 屬性（後者在 FastAPI threadpool 併發下會被別請求覆寫）
     hits = core.retrieve(query, k=3)
-    # 把可靠命中頁碼掛在函式上供引用護欄取用（不從顯示字串 re-parse，避免內文 p.N 污染白名單）
-    search_filings.last_pages = {h["page"] for h in hits}
+    pages = {h["page"] for h in hits}
     if not hits:
-        return "文件查無相關內容。"
-    return " ｜ ".join(f"(p.{h['page']}) {h['text'][:120]}" for h in hits)
-
-
-search_filings.last_pages = set()
+        return "文件查無相關內容。", pages
+    return " ｜ ".join(f"(p.{h['page']}) {h['text'][:120]}" for h in hits), pages
 
 
 def lookup_metric(company: str, metric: str, year=None) -> str:
@@ -89,7 +87,7 @@ def _events(user_msg: str, history=None):
     messages.append({"role": "user", "content": user_msg})
     called = set()
     allowed_pages = set()   # 本軌跡 search_filings 命中的頁碼（用於剝除 final 的幻覺頁碼）
-    grounded = " ".join([user_msg] + [m.get("content", "") for m in (history or [])])  # 數值溯源範圍：題目＋歷史，逐步加工具結果
+    grounded = user_msg or ""   # 數值溯源範圍：只本輪題目＋本輪工具結果（不含 history——上輪模型輸出不可當數值佐證，否則跨輪幻覺數字會被自己洗白）
     corrections = 0   # 數值未溯源時的更正次數（上限 1，逼一次工具查證）
     stuck = 0   # 連續「沒成功執行工具/沒給 final」的步數
     for _ in range(MAX_TURNS):
@@ -162,7 +160,8 @@ def _events(user_msg: str, history=None):
             stuck = 0
             result = fn(**{k: args[k] for k in passed})
             if name == "search_filings":
-                allowed_pages |= search_filings.last_pages
+                result, pages = result          # (顯示字串, 命中頁碼集)；就地取頁碼，無共享狀態
+                allowed_pages |= pages
             grounded += " " + str(result)   # 工具結果納入數值溯源範圍
             yield ("tool", name, args, result)
             messages.append({"role": "assistant", "content": raw})

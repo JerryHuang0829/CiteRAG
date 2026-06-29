@@ -81,16 +81,20 @@ def _resolve_code(company: str):
     c = (company or "").strip()
     if c.isdigit():
         return c
-    for name, code in NAME_TO_CODE.items():          # 先查內建
-        if name in c:
-            return code
-    allc = _load_all_codes()                         # 再查全市場表
-    if c in allc:
+    if c in NAME_TO_CODE:                             # 內建精確
+        return NAME_TO_CODE[c]
+    allc = _load_all_codes()
+    if c in allc:                                     # 全市場精確
         return allc[c]
+    # 退而求子串：取「最長」匹配名，避免短名前綴誤吃（台塑 vs 台塑化、南亞 vs 南亞科）
+    best = None
+    for name, code in NAME_TO_CODE.items():
+        if name in c and (best is None or len(name) > len(best[0])):
+            best = (name, code)
     for name, code in allc.items():
-        if name and name in c:
-            return code
-    return None
+        if name and name in c and (best is None or len(name) > len(best[0])):
+            best = (name, code)
+    return best[1] if best else None
 
 
 def _fetch(stock_id: str, year):
@@ -113,10 +117,11 @@ def _fetch(stock_id: str, year):
             rows = json.loads(r.read()).get("data", [])
     except Exception:
         rows = None
-    _CACHE[key] = rows
-    if rows:                                         # 只快取成功結果（None/空不存，下次可重試）
-        d[dkey] = rows
-        _disk_save()
+    if rows:                                          # 只快取成功結果（失敗 None/空不寫，下次可重試）
+        _CACHE[key] = rows
+        if sum(1 for r in rows if r.get("type") == "EPS") >= 4:   # 僅磁碟快取「完整四季」年度；
+            d[dkey] = rows                                        # 當年未滿四季的 partial-year 不永久快取，補齊後重抓
+            _disk_save()
     return rows
 
 
@@ -132,7 +137,7 @@ def _resolve_year(code: str, year):
 
 
 def _sum(rows, t):
-    return sum(r["value"] for r in rows if r.get("type") == t)
+    return sum(r["value"] for r in rows if r.get("type") == t and isinstance(r.get("value"), (int, float)))
 
 
 def _money(v):
@@ -184,7 +189,9 @@ def lookup(company: str, metric: str, year=None) -> str:
     v = _metric_value(rows, metric)
     if v is None:
         return f"{company}({code}) {year}：暫不支援指標「{metric}」（支援 EPS／營收／毛利率／毛利／淨利／營業利益）。"
-    return f"{company}({code}) {year} 全年{('' if '率' in metric else '')}{metric} {_fmt_metric(metric, v)}"
+    nq = sum(1 for r in rows if r.get("type") == "EPS")
+    period = f"前{nq}季累計" if 0 < nq < 4 else "全年"   # 當年未滿四季→誠實標「前N季累計」而非「全年」
+    return f"{company}({code}) {year} {period}{metric} {_fmt_metric(metric, v)}"
 
 
 def _fetch_price(stock_id: str):
@@ -269,9 +276,11 @@ def compare(metric: str, companies=None, year=None, threshold=None) -> str:
     if op:
         keep = {">": lambda x: x > num, "<": lambda x: x < num,
                 ">=": lambda x: x >= num, "<=": lambda x: x <= num}[op]
+        prefilter = results
         results = [t for t in results if keep(t[2])]
         if not results:
-            return f"{year} {metric} 沒有公司符合 {threshold}（範圍：{', '.join(n for n, _, _ in [])}）。"
+            rng = ", ".join(f"{n} {_fmt_metric(metric, v)}" for n, _, v in prefilter)
+            return f"{year} {metric} 沒有公司符合 {threshold}（候選：{rng}）。"
 
     results.sort(key=lambda t: t[2], reverse=True)
     body = " ＞ ".join(f"{nm} {_fmt_metric(metric, v)}" for nm, code, v in results)

@@ -2,9 +2,11 @@
 
 當前狀態快照（非變更日誌）。每 session 結束覆寫更新。
 
-- 更新時間：2026-06-25
-- 階段：**W0–W3 ✅ ＋ 工程強化 A1–D2 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector 後端 ✅ ＋ 多輪對話記憶 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ git/GitHub 已上線（JerryHuang0829/CiteRAG）**。
-  下一步：**E2 一頁 case study**；之後選配 C1 雲端 router（待 key）/ 測試集擴充。
+- 更新時間：2026-06-29
+- 中文名：**本地檢索增強問答系統（CiteRAG）**（人看的標題用；code/repo/`CiteRAG API` 維持英文識別不動）。
+- 階段：**W0–W3 ✅ ＋ 工程強化 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector ✅ ＋ 多輪對話記憶 ✅ ＋ 數值幻覺護欄 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ 全專案稽核 43 確認問題全修 ✅ ＋ git/GitHub 上線（JerryHuang0829/CiteRAG）**。
+  下一步：**E2 一頁 case study（已更新但可再擴寫）**；之後選配 C1 雲端 router（待 key）/ 測試集擴充。
+- **全專案稽核（多代理 + 對抗式驗證，43 確認問題全修）**：HIGH＝①多輪 history 數字污染數值護欄（grounded 改只收本輪題目+工具結果，不含 history assistant）②findata explicit-year partial-year 誤標「全年」+永久快取（改標「前N季累計」+ 只磁碟快取完整四季）；MEDIUM＝search_filings.last_pages 全域單例 race（改結構化回傳就地取頁碼）、core.py 重型依賴 lazy import（確定性測試免載 ML 堆疊，雲端 2.5s）、findata/pgstore 補離線測試、verify_numbers 接入確定性狀態機測試、BM25 快取 re-ingest 失效、422 前後端契約一致 + 前端 history 中毒過濾；LOW/nit＝verify_numbers 年份豁免改上下文感知（緊鄰「年」才豁免）、千分位嚴格三位、verify_citations 裸式多頁/範圍、_resolve_code 最長匹配、_sum 容錯等。雲端測試 **36→55 passed**。
 
 ---
 
@@ -40,8 +42,8 @@
 - **② RAG Triad（golden 28 題）**：answer correctness **0.893 [0.786,1.000]**；**context recall 1.000**（檢索不漏）；context precision 0.490；faithfulness(4B judge) 0.667（**noisy proxy，judge 把多題答對的判不忠實→再證 4B judge 不可靠**）；relevancy 1.000。分類：factual/qualitative 1.000、exact-term 0.875、refuse 0.667、trap 0.000(n=1)。
 - **Agent 難情境（n=8）**：hard success 0.875 [0.625,1.000]。
 - **多輪對話記憶（multi-turn golden：6 段對話 / 13 turns / 7 follow-ups，含 ON vs OFF ablation）**：
-  - **解析準確率（follow-up）**：history-ON **0.714 [0.425,1.000]** vs OFF **0.286 [0.000,0.571]**；**Δ(ON−OFF) +0.429 [+0.143,+0.857] 顯著**（配對 bootstrap，CI 不跨 0）→ 記憶確實買到跨輪解析力。
-  - **答案準確率（全 13 turns）**：**0.923 [0.769,1.000]**（12/13；唯一錯＝mt6）。
+  - **解析準確率（follow-up, n=7）**：history-ON **0.857 [0.571,1.000]** vs OFF **0.286 [0.000,0.571]**；**Δ(ON−OFF) +0.571 [+0.143,+0.857] 顯著**（配對 bootstrap，CI 不跨 0）→ 記憶確實買到跨輪解析力。點估計跨 run 約 0.71~0.86（4B 在即時股價輪非決定性，有時更正後才呼叫 stock_price）；Δ「顯著」為穩健結論。
+  - **答案準確率（全 13 turns）**：**1.000 [0.769,1.000]**（13/13；財報歷史值斷言精確數值、即時股價輪斷言實體+工具呼叫——股價每日變動不可硬斷言，嚴謹度由 resolution 指標承擔）。
   - **誠實校正（n=7 小樣本）**：①ON 被「嚴格 tool 比對」低估——mt5「那營收呢」實際把台積電+聯電+2023 都帶對且答案正確，只因走 2×lookup 而非 compare 被判 miss（語意解析口徑 ON≈0.857）；②OFF 被「好猜案例」高估——mt1「它」猜台積電、mt4「那聯電呢」猜 2023 剛好對（in-text/可猜）→ 真實 Δ 應更大。兩邊都讓 Δ 偏保守，結論方向穩固。
   - **數值幻覺護欄（verify_numbers，修 failure #6）**：mt6 第二輪幻覺已由護欄處理——更正後逼出 stock_price 拿真值（257.5），或 4B 固執不查時誠實拒答；**「裸顯示未溯源數字」已成 0**。解析/答案準確率「點估計不變」（mt6 仍非 257、仍判 miss），改變的是 **failure mode：靜默編造 → 修正或拒答**（非決定性：能否救回真值取決於更正 retry 是否誘發工具呼叫）。
 - **③ CI**：雲端確定性套件 **36 passed**（+9 多輪 schema/計分邏輯、+6 verify_numbers 數值溯源，皆合成資料不跑 LLM）；本地 gate **4 passed**（golden grounding + context recall≥0.7 + 多輪解析端到端 + 數值護欄「修正或拒答」各 ~60s）。

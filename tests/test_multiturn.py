@@ -24,6 +24,7 @@ def test_multiturn_ids_unique():
 
 
 def test_multiturn_schema_and_first_turn():
+    has_recency = False
     for c in load():
         assert c.get("turns"), f"{c['id']} 無 turns"
         assert not c["turns"][0]["followup"], f"{c['id']} 首輪不應是 follow-up"
@@ -31,6 +32,11 @@ def test_multiturn_schema_and_first_turn():
             assert REQUIRED_TURN <= set(t), f"{c['id']} turn 缺欄位"
             assert isinstance(t["expect_args"], list) and t["expect_args"], f"{c['id']} expect_args 空"
             assert isinstance(t["expect_answer"], list) and t["expect_answer"], f"{c['id']} expect_answer 空"
+            if "expect_not_args" in t:   # recency 防漂移：typo 成空 list 會靜默關閉該 gate
+                assert isinstance(t["expect_not_args"], list) and t["expect_not_args"] \
+                    and all(isinstance(x, str) for x in t["expect_not_args"]), f"{c['id']} expect_not_args 須為非空字串清單"
+                has_recency = True
+    assert has_recency, "golden 應至少有一個 expect_not_args（recency 解析防漂移），否則該檢查被靜默拔掉"
 
 
 # ---------- 雲端確定性：評測計分邏輯（合成 trace）----------

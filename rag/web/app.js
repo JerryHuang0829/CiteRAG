@@ -122,8 +122,12 @@ async function runAgent(q) {
   card.innerHTML = html;
   card.scrollIntoView({ block: "nearest" });
 
-  agentHistory.push({ role: "user", content: q }, { role: "assistant", content: data.answer });
-  if (agentHistory.length > 6) agentHistory = agentHistory.slice(-6);   // 只留最近 3 輪
+  // 只在答案非空時推入並截斷（<2000，與後端 Msg.max_length 一致）；空/超長答案會讓下輪整包 422、對話卡死
+  const ans = (data.answer || "").trim().slice(0, 1900);
+  if (ans) {
+    agentHistory.push({ role: "user", content: q.slice(0, 1900) }, { role: "assistant", content: ans });
+    if (agentHistory.length > 6) agentHistory = agentHistory.slice(-6);   // 只留最近 3 輪
+  }
 }
 
 function clearAgent() {

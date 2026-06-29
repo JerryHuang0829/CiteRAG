@@ -21,11 +21,11 @@ from pathlib import Path
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
-import faiss
 import numpy as np
-import pymupdf4llm
-from fastembed import TextEmbedding
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# faiss / fastembed / pymupdf4llm 為重型 native/ONNX 依賴，改 lazy import（移進使用它們的函式）：
+# 讓純函式（verify_citations / verify_numbers / BM25 / stats）的確定性測試免載整套 ML 堆疊。
 
 sys.stdout.reconfigure(encoding="utf-8")   # Windows cp950 無法編部分字元，強制 UTF-8
 
@@ -84,6 +84,7 @@ def load_and_chunk(data_dir: Path = DATA_DIR) -> list[dict]:
     if not pdfs:
         raise SystemExit(f"找不到 PDF，請放到 {data_dir}")
     chunks: list[dict] = []
+    import pymupdf4llm
     for pdf in pdfs:
         for d in pymupdf4llm.to_markdown(str(pdf), page_chunks=True):
             page = _page_of(d)
@@ -102,9 +103,10 @@ _EMBEDDER = None     # 模組級快取，避免每次查詢重載模型
 _RERANKER = None
 
 
-def get_embedder() -> TextEmbedding:
+def get_embedder():
     global _EMBEDDER
     if _EMBEDDER is None:
+        from fastembed import TextEmbedding
         _EMBEDDER = TextEmbedding(model_name=EMBED_MODEL, cache_dir=str(MODEL_CACHE))
     return _EMBEDDER
 
@@ -132,6 +134,7 @@ def build_index(chunks: list[dict]) -> None:
         import pgstore
         pgstore.rebuild(chunks, vecs)
         return
+    import faiss
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     index = faiss.IndexFlatIP(vecs.shape[1])           # 正規化向量 + 內積 = cosine
     index.add(vecs)
@@ -146,6 +149,7 @@ def load_index():
         raise FileNotFoundError(
             f"找不到索引（{INDEX_PATH}）。請先在 rag/ 跑：python ingest.py"
         )
+    import faiss
     index = faiss.read_index(str(INDEX_PATH))
     chunks = [json.loads(line) for line in open(CHUNKS_PATH, encoding="utf-8")]
     return index, chunks
@@ -250,6 +254,8 @@ class _BM25:
         self.idf = {t: math.log(1 + (self.N - n + 0.5) / (n + 0.5)) for t, n in df.items()}
 
     def scores(self, q_tokens) -> list[float]:
+        # O(|q|×N) 全掃（無倒排索引）：小語料（n≈12~數百 chunk）無感；語料上千 chunk 才需
+        # 建 postings list 只迭代含該 term 的文件。規模化路徑走 pgvector 後端，故此處不優化。
         out = [0.0] * self.N
         for t in q_tokens:
             idf = self.idf.get(t)
@@ -264,12 +270,16 @@ class _BM25:
 
 
 _BM25_IDX = None
+_BM25_KEY = None
 
 
 def _get_bm25(chunks):
-    global _BM25_IDX
-    if _BM25_IDX is None:
+    # 以內容指紋為快取 key：re-ingest 換語料後自動重建，避免 BM25(舊) 與 FAISS(新熱讀) 索引對不齊
+    global _BM25_IDX, _BM25_KEY
+    key = (len(chunks), hash(tuple(c["text"] for c in chunks)))
+    if _BM25_IDX is None or key != _BM25_KEY:
         _BM25_IDX = _BM25([bm25_tokens(c["text"]) for c in chunks])
+        _BM25_KEY = key
     return _BM25_IDX
 
 
@@ -313,17 +323,23 @@ def build_prompt(query: str, hits: list[dict]) -> str:
     )
 
 
-# 一個引用 token：括號式 (p.3,4)/（p.3、4） 或裸式 p.3；括號式可含逗號/頓號多頁
-_CITE_TOKEN = re.compile(r"[（(]\s*[pP]\.?\s*([\d\s,、]+?)\s*[)）]|[pP]\.\s*(\d+)")
+# 一個引用 token：括號式 (p.3,4)/（p.3、4）/(p.3-5) 或裸式 p.3 / p.3,4；含逗號/頓號/範圍多頁
+_CITE_TOKEN = re.compile(r"[（(]\s*[pP]\.?\s*([\d\s,、\-–~]+?)\s*[)）]|[pP]\.\s*(\d+(?:\s*[-–~,、]\s*\d+)*)")
 _CITE_NUM = re.compile(r"\d+")
+_CITE_RANGE = re.compile(r"(\d+)\s*[-–~]\s*(\d+)")
+
+
+def _expand_pages(s: str) -> list:
+    # 把 a-b 範圍展開成連續頁，再收齊逗號/頓號分隔的多頁
+    s = _CITE_RANGE.sub(lambda m: ",".join(str(p) for p in range(int(m.group(1)), int(m.group(2)) + 1)), s or "")
+    return [int(n) for n in _CITE_NUM.findall(s)]
 
 
 def pages_in(text: str) -> set:
-    # 抽出文字中所有引用頁碼：(p.3) /（p.3）/ p.3 /（p.3,4）多頁
+    # 抽出文字中所有引用頁碼：(p.3) /（p.3）/ p.3 /（p.3,4）/(p.3-5) 多頁與範圍
     out = set()
     for inner, bare in _CITE_TOKEN.findall(text or ""):
-        for n in _CITE_NUM.findall(inner or bare or ""):
-            out.add(int(n))
+        out.update(_expand_pages(inner or bare or ""))
     return out
 
 
@@ -336,13 +352,7 @@ def verify_citations(answer: str, hit_pages) -> tuple:
 
     def _repl(m):
         inner, bare = m.group(1), m.group(2)
-        if inner is None:                       # 裸式 p.N
-            page = int(bare)
-            if page in allowed:
-                return m.group(0)
-            stripped.append(page)
-            return ""
-        pages = [int(n) for n in _CITE_NUM.findall(inner)]   # 括號式可多頁
+        pages = _expand_pages(inner if inner is not None else bare)   # 括號式/裸式皆可多頁+範圍
         keep = [p for p in pages if p in allowed]
         stripped.extend(p for p in pages if p not in allowed)
         if not keep:
@@ -357,8 +367,8 @@ def verify_citations(answer: str, hit_pages) -> tuple:
     return cleaned, stripped
 
 
-# 值型數字（整數/小數，容忍千分位逗號）；用於 verify_numbers 的數值溯源
-_NUM_TOKEN = re.compile(r"\d[\d,]*(?:\.\d+)?")
+# 值型數字（整數/小數）；千分位逗號只接受嚴格三位分組（避免把『12,34』兩個數錯併成 1234）
+_NUM_TOKEN = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
 
 
 def _num_set(text: str) -> set:
@@ -375,17 +385,20 @@ def verify_numbers(answer: str, grounded_text: str) -> list:
     """回傳 answer 中『無法溯源到 grounded_text』的值型數字（疑似生成端幻覺）。
 
     與 verify_citations 對稱：頁碼要在檢索命中集，數值要在「工具結果＋題目＋對話歷史」內。
-    容忍四捨五入（±0.05 或 ±1%）；排除年份（1900–2100 的整數，非『值』）以免誤判。
+    容忍四捨五入（±0.05 或 ±1%）；年份只在『緊鄰「年」字』時豁免（避免把股價/筆數/金額等
+    落在 1900–2100 的真實整數值當年份放行——那正是『沒查就編股價』要擋的盲區）。
     Agent 用：數值類答案若含未溯源數字→退回強制查工具，擋『沒查就編數字』。"""
     grounded = _num_set(grounded_text)
+    answer = answer or ""
     bad = []
-    for tok in _NUM_TOKEN.findall(answer or ""):
+    for m in _NUM_TOKEN.finditer(answer):
+        tok = m.group(0)
         try:
             v = round(float(tok.replace(",", "")), 4)
         except ValueError:
             continue
-        if v.is_integer() and 1900 <= v <= 2100:
-            continue   # 年份不視為需溯源的「值」（且通常已在題目/工具內）
+        if v.is_integer() and 1900 <= v <= 2100 and answer[m.end():m.end() + 2].lstrip().startswith("年"):
+            continue   # 四位整數且緊鄰「年」＝年份，不需溯源
         if any(abs(v - g) <= max(0.05, abs(g) * 0.01) for g in grounded):
             continue
         bad.append(tok)
