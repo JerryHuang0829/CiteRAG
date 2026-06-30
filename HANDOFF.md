@@ -2,10 +2,11 @@
 
 當前狀態快照（非變更日誌）。每 session 結束覆寫更新。
 
-- 更新時間：2026-06-29
+- 更新時間：2026-06-30
 - 中文名：**本地檢索增強問答系統（CiteRAG）**（人看的標題用；code/repo/`CiteRAG API` 維持英文識別不動）。
-- 階段：**W0–W3 ✅ ＋ 工程強化 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector ✅ ＋ 多輪對話記憶 ✅ ＋ 數值幻覺護欄 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ 全專案稽核 43 確認問題全修 ✅ ＋ git/GitHub 上線（JerryHuang0829/CiteRAG）**。
-  下一步：**E2 一頁 case study（已更新但可再擴寫）**；之後選配 C1 雲端 router（待 key）/ 測試集擴充。
+- 階段：**W0–W3 ✅ ＋ 工程強化 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector ✅ ＋ 多輪對話記憶 ✅ ＋ 數值幻覺護欄 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ 全專案稽核 43 確認問題全修 ✅ ＋ git/GitHub 上線（JerryHuang0829/CiteRAG）＋ 雲端 LLM router ✅（`CITERAG_LLM_BACKEND=cloud`：Gemini Flash-Lite 主 + Groq fallback；離線測試 63 passed）**。
+  ＋ Dockerfile/HF 部署檔 ✅（`docker build` + 容器 smoke 實證：/health 200、容器內雲端 `core.generate` 1.4s、`/ask` 全鏈路 200 帶頁碼引用、首次 32s）。
+  下一步：剩 **HF Spaces push（你的 HF 帳號，見 `DEPLOY.md`）+ 公開部署前重生 Gemini 金鑰（曾外洩）**。Groq fallback 已實測（雙 provider auth OK + 強制 Gemini 失敗自動切 Groq）。E2 case study / 測試集擴充並行。
 - **全專案稽核（多代理 + 對抗式驗證，43 確認問題全修）**：HIGH＝①多輪 history 數字污染數值護欄（grounded 改只收本輪題目+工具結果，不含 history assistant）②findata explicit-year partial-year 誤標「全年」+永久快取（改標「前N季累計」+ 只磁碟快取完整四季）；MEDIUM＝search_filings.last_pages 全域單例 race（改結構化回傳就地取頁碼）、core.py 重型依賴 lazy import（確定性測試免載 ML 堆疊，雲端 2.5s）、findata/pgstore 補離線測試、verify_numbers 接入確定性狀態機測試、BM25 快取 re-ingest 失效、422 前後端契約一致 + 前端 history 中毒過濾；LOW/nit＝verify_numbers 年份豁免改上下文感知（緊鄰「年」才豁免）、千分位嚴格三位、verify_citations 裸式多頁/範圍、_resolve_code 最長匹配、_sum 容錯等。雲端測試 **36→55 passed**。
 
 ---
@@ -56,11 +57,13 @@
 4. **小模型條件式/拒答失誤**：4B 對「若 X 才 Y」易失敗、會把民國年誤算西元；golden r2「2025 營收」該拒答卻沒拒、h8「資本支出 979」已在 context 卻沒抽出 → 可定位的生成端缺口（更強抽取/拒答 prompt）。
 5. **deterministic 揭穿 LLM judge**：faithfulness(4B)=0.667 < 客觀 correctness 0.893，judge 把答對的判不忠實 → 本地小模型 judge 不可靠，需獨立/更強 judge 校準。
 6. **多輪意圖延續會誘發幻覺（已修）**：mt6「台積電股價→那鴻海呢」第二輪 4B 沒呼叫 stock_price、直接在 final 編出 112.50 元/+23.7%（實際 257.5）→ 多輪 context 誘發「憑記憶作答」。先被 answer-check 抓到，再以 **`core.verify_numbers` 護欄修正**（與 `verify_citations` 對稱：頁碼要在檢索集、數值要在「工具結果＋題目＋歷史」內）：agent final 含未溯源數字 → 退回逼一次工具查證；更正後仍沒查工具就**拒答不展示假數字**。實測：有時逼出 stock_price 得 257.5、有時拒答，**裸幻覺＝0**。誠實邊界：能否救回真值非決定性（取決於 4B 是否聽從更正），但「不展示未溯源數字」是硬保證。
+7. **雲端 demo reranker 冷啟動下載（已修）**：Docker 化後首次 `/ask` 卡 ~140s、甚至 500——root cause：`ingest.py` build 時只快取 embedder，**reranker（bge-reranker-base）在 runtime 首次請求才從 HF Hub 下載**（未認證下載被限速 → 500）。修：Dockerfile build 時多跑一次 `core.retrieve` 暖機把 reranker 預載進 image。實測首次 `/ask` **140s→32s**、runtime 零下載（`Fetching` 0 次）。教訓：lazy-load 的模型容器化要 **build 時預載**，否則冷啟動依賴外部下載＝慢且脆。
+8. **Groq 被 Cloudflare 擋（error 1010，已修）**：router/probe 用 `urllib` 打 Groq API 回 `403 error code: 1010`——root cause：Groq API 在 Cloudflare 後，預設 `Python-urllib` User-Agent 被當 bot 擋（**與 key/帳號無關**；Gemini 無此層故正常）。诊断法：讀 403 response body 看到 1010（Cloudflare 碼非 Groq 碼）+ 帶 `User-Agent: Mozilla/5.0` 重打即 200。修：`llm_router._post` 與 `probe.test_groq` 帶 UA。實測雙 provider auth OK + 強制 Gemini 失敗自動 fallback Groq 回答成功。grep sweep 確認其餘 urllib（Ollama localhost / FinMind / Gemini）不受影響。教訓：第三方 API 在 CDN/WAF 後時裸 UA 會被擋，錯誤碼要分清是 provider 還是 CDN。
 
 ## 五、已知問題 / 待辦
 
 - **E2 一頁 case study 未產出**（把上面 failure cases 寫成顧問敘事；補 JD「需求→AI 方案」軸線）。
-- **C1 雲端 router 未接**（JD「串接雲端 API」；免費金鑰未申請；`core` 僅本地 Ollama）。
+- **C1 雲端 router ✅ 已實作並端到端實證**（`llm_router.py`：`CITERAG_LLM_BACKEND=cloud`；Gemini Flash-Lite 主 + Groq fallback；逐家 json 模式對映 + 壞 JSON 歸零；離線 8 例 + Gemini 金鑰實連 auth OK + 容器內 `/ask` 全鏈路 200 帶引用）。Docker 化（`Dockerfile`/`.dockerignore`/`.env.example`/`DEPLOY.md`）build+smoke 驗證過。Groq fallback 金鑰已設定並實測（Cloudflare UA 修復後雙 provider 皆 auth OK、fallback 切換實證）。**待**：HF Spaces push（你的 HF 帳號）+ 公開前重生 Gemini 金鑰（曾外洩）。VLM 讀圖仍走本機（cloud demo 不含）。
 - 測試集偏小（檢索 n=12 / golden 28）、僅 2 份 PDF → 擴題是 reranker/hybrid 終局與收窄 CI 的前提。
 - `TOP_K=5`（已對齊 eval MAIN_K）；n8n/Dify、STT/TTS/影像生成 未碰（多模態 2/5）。
 - 多輪只塞前文 Q/A、上限 3 輪；長對話可靠度未驗。multi-turn golden 已建（n=7 follow-up 偏小、CI 寬）→ 可擴題收窄、補 RAG 多輪與更多 recency/負例。
@@ -69,7 +72,8 @@
 ## 六、檔案
 
 - `PLAN.md`(SSOT) / `CLAUDE.md`(守則) / `HANDOFF.md`(本檔) / `README.md`(對外) / `requirements.txt` / `.gitignore`
-- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/**`verify_numbers`**/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price）/ **`pgstore.py`**（pgvector 向量資料庫後端，可切換） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
+- 部署：`Dockerfile`（cloud 預設、build 時建索引+暖機 reranker） / `.dockerignore` / `.env.example` / `DEPLOY.md`（HF Spaces 步驟）
+- `rag/`：`core.py`（引擎：解析/嵌入/FAISS/**BM25+RRF**/重排/生成/`verify_citations`/**`verify_numbers`**/`vlm_b64`）/ `agent.py`（5 工具）/ **`findata.py`**（FinMind 結構化查詢：lookup/compare/stock_price）/ **`pgstore.py`**（pgvector 向量資料庫後端，可切換） / **`llm_router.py`**（生成端路由：本機 Ollama / 雲端 Gemini+Groq fallback，`CITERAG_LLM_BACKEND`） / `app.py`(Gradio) / `api.py`(FastAPI) / **`web/`**(自製前端) / `stats.py` / **`golden.py`+`golden.jsonl`** / `ingest.py` / `ask.py`
   - eval：`eval_retrieval.py` / `eval_rerank.py` / **`eval_hybrid.py`** / `eval_generation.py` / **`eval_rag_triad.py`** / `eval_agent.py` / `eval_agent_hard.py` / **`eval_multiturn.py`＋`golden_multiturn.jsonl`**（多輪解析 ON/OFF ablation，結果 `multiturn_results.json`）
 - `tests/`：pytest（雲端確定性 + 本地 gate）　|　`.github/workflows/ci.yml`
 - `w0/`：benchmark 腳本 + json　|　`data/`：公開 PDF + sample_nameplate.png　|　`index/`：faiss + chunks(78)

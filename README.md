@@ -1,3 +1,13 @@
+---
+title: CiteRAG
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 本地檢索增強問答系統 CiteRAG — 帶頁碼引用、可拒答、可溯源的 RAG + Agent 文件問答
 
 一套 **CPU-only、零雲端** 的繁體中文文件問答系統：把 PDF 變成「**帶頁碼引用、會拒答、擋幻覺**」的問答助手，並延伸出多工具 Agent、多輪對話記憶與視覺讀圖。重點不在堆語料規模，而在把一條 RAG 鏈路的每個工程決策**量化、可重現、能擋退步**。
@@ -95,6 +105,24 @@ pip install psycopg2-binary
 cd rag && CITERAG_PGVECTOR=1 python ingest.py     # 嵌入寫進 pgvector（取代 FAISS 索引）
 CITERAG_PGVECTOR=1 uvicorn api:app --port 8000    # 用 pgvector 後端啟動
 ```
+
+---
+
+## 生成後端：本機 Ollama（預設）/ 雲端免費 API（可切換）
+
+環境變數 `CITERAG_LLM_BACKEND` 切換「生成」這一步（embedding 與檢索一律本機 bge-small-zh，資料不外洩）：
+
+- **`ollama`**（預設）：本機 `qwen3:4b-instruct`，離線、零成本、適合開發。
+- **`cloud`**：免費雲端 API——**Gemini 2.5 Flash-Lite 為主，失敗/429/壞 JSON 時自動 fallback Groq**；用於 CPU-only 免費主機（如 HF Spaces）的線上 demo（免費主機跑不動本機 LLM）。純 `urllib`、零新依賴。
+
+啟用 cloud（金鑰皆免信用卡：aistudio.google.com / console.groq.com，寫進 repo 根 `.env`）：
+```bash
+# .env: GEMINI_API_KEY=... / GROQ_API_KEY=...
+python w0/03_cloud_probe.py            # 先驗連通 + 金鑰
+cd rag && CITERAG_LLM_BACKEND=cloud uvicorn api:app --port 8000
+```
+
+> ⚠️ Gemini 免費層會用 prompt 訓練 → 僅送公開資料、勿送敏感/PII。繁中 fallback 品質可改 `CITERAG_GROQ_MODEL`（預設 `llama-3.1-8b-instant`，須自行確認 console 模型 id）。
 
 ---
 

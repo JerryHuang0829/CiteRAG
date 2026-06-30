@@ -431,6 +431,11 @@ def _open_ollama(url: str, payload: dict):
 
 def generate_iter(prompt: str):
     # 串流生成，逐 token yield（CLI 與網頁 UI 共用）
+    # cloud 後端無 SSE：整段非串流結果一次 yield（demo 可用，犧牲逐字串流）
+    import llm_router
+    if llm_router._backend() == "cloud":
+        yield llm_router.route_generate(prompt, as_json=False)
+        return
     payload = {
         "model": GEN_MODEL, "prompt": prompt, "stream": True,
         "options": {"num_ctx": NUM_CTX, "num_thread": NUM_THREAD, "temperature": 0.2},
@@ -459,6 +464,12 @@ def generate_stream(prompt: str) -> str:
 
 
 def generate(prompt: str, as_json: bool = False) -> str:
+    # 生成入口：依 CITERAG_LLM_BACKEND 路由（預設本機 Ollama；cloud 走免費雲端 API）
+    import llm_router
+    return llm_router.route_generate(prompt, as_json)
+
+
+def _ollama_generate(prompt: str, as_json: bool = False) -> str:
     # 非串流生成（eval 用）；as_json=True 走 grammar 約束輸出合法 JSON
     payload = {
         "model": GEN_MODEL, "prompt": prompt, "stream": False,
@@ -473,6 +484,12 @@ def generate(prompt: str, as_json: bool = False) -> str:
 
 
 def chat(messages: list[dict], as_json: bool = False) -> str:
+    # Agent 生成入口：依 CITERAG_LLM_BACKEND 路由（預設本機 Ollama；cloud 走免費雲端 API）
+    import llm_router
+    return llm_router.route_chat(messages, as_json)
+
+
+def _ollama_chat(messages: list[dict], as_json: bool = False) -> str:
     # /api/chat：給 messages、回一則訊息（Agent 用）；as_json 走 grammar 約束輸出合法 JSON
     payload = {
         "model": GEN_MODEL, "messages": messages, "stream": False,

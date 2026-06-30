@@ -51,7 +51,8 @@ def test_groq(key):
                        "messages": [{"role": "user", "content": "say OK"}],
                        "max_tokens": 5}).encode()
     req = urllib.request.Request(url, data=body, headers={
-        "Content-Type": "application/json", "Authorization": f"Bearer {key}"})
+        "Content-Type": "application/json", "Authorization": f"Bearer {key}",
+        "User-Agent": "Mozilla/5.0"})   # Groq 在 Cloudflare 後，預設 urllib UA 會被當 bot 擋（error 1010）
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=30) as r:
         r.read()

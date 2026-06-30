@@ -1,0 +1,22 @@
+# 衍生/快取（image 內 ingest.py 重建）
+index/
+hf_cache/
+models/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 祕密（用 HF Space secrets 注入，勿 bake）
+.env
+.env.*
+
+# 執行期不需要（縮小 image）
+.git/
+.github/
+tests/
+w0/
+*.md
+start_app.bat
+.findata_cache.json
