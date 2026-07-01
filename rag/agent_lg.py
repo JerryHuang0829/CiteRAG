@@ -35,8 +35,17 @@ def _load_langfuse_env():
 
 
 _load_langfuse_env()
-TRACE_ON = bool(os.environ.get("LANGFUSE_PUBLIC_KEY"))
+# 有 LANGFUSE key 才開；但 pytest 下強制關（避免單元測試送 trace 污染儀表板/拖慢）
+TRACE_ON = bool(os.environ.get("LANGFUSE_PUBLIC_KEY")) and "pytest" not in sys.modules
 if TRACE_ON:
+    # conda 常把 SSL_CERT_FILE 指到 base env 不存在的 cacert → httpx/langfuse 會 FileNotFoundError（urllib 不受影響）；指到 certifi 修正
+    _cert = os.environ.get("SSL_CERT_FILE")
+    if not _cert or not os.path.exists(_cert):
+        try:
+            import certifi
+            os.environ["SSL_CERT_FILE"] = certifi.where()
+        except Exception:
+            os.environ.pop("SSL_CERT_FILE", None)
     from langfuse import observe as _observe
     def _obs(name):
         return _observe(name=name)
