@@ -53,6 +53,7 @@
 - **找得到**：context recall **1.000** — 檢索不是瓶頸。
 - **答得對**：answer correctness **0.893** [0.786, 1.000]（factual/qualitative 類 100%）。
 - **找得準**：hybrid 檢索層 **ΔMRR +0.229**（CI 不含 0，顯著）。
+- **元件 ablation（真實語料 9,579 chunks，golden n=32；`eval_ablation.py`）**：dense recall 0.812/MRR 0.678 → +hybrid **無變化** → **+rerank recall 1.000/MRR 0.820**。**rerank 是關鍵元件**（recall +18.8pp、MRR +0.14）；hybrid 在此 golden set 未見增益（誠實負結果，與 toy 語料「hybrid 被 reranker 遮蔽」一致——其價值視 query 型態/規模而定，非無用）。**量化每個元件是否值得**＝不盲加。
 - **接得上（多輪）**：對話記憶 vs 無，跨輪代名詞解析率 **Δ +0.571**（配對 bootstrap 顯著）。
 - **擋得住（安全）**：OWASP 紅隊 5 攻擊 **block_rate 1.000**（確定性判定，非 LLM judge）。
 - **上得線**：Docker 化容器 `/ask` 全鏈路帶頁碼引用；首次請求延遲 **140s→32s**（見 §6-6）。
