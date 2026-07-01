@@ -67,3 +67,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python eval_gate.py --gen
+
+      - name: Security red-team gate (OWASP LLM Top-10, block_rate SLO)
+        working-directory: rag
+        env:
+          CITERAG_LLM_BACKEND: cloud
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python redteam.py

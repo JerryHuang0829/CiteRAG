@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 import agent
 import core
+import security
 
 app = FastAPI(title="CiteRAG API", version="1.1")
 
@@ -94,9 +95,11 @@ def ask(req: AskReq):
     hits = core.retrieve(req.query, k)
     raw = core.generate(core.build_prompt(req.query, hits))
     answer, stripped = core.verify_citations(raw, {h["page"] for h in hits})
+    answer, pii = security.redact_pii(answer)          # 輸出護欄：遮罩任何 PII（defense-in-depth）
     return {
         "answer": answer,
         "stripped_pages": stripped,
+        "pii_redacted": [t for t, _ in pii],
         "sources": [
             {"source": h["source"], "page": h["page"], "score": round(h["score"], 4)}
             for h in hits
@@ -109,7 +112,8 @@ def run_agent(req: AgentReq):
     # 只保留最近 6 則（3 輪），控制 4B 的 context（num_ctx=4096）
     history = [m.model_dump() for m in (req.history or [])][-6:] or None
     final, trace = agent.run(req.message, history=history, verbose=False)
-    return {"answer": final, "trace": trace}
+    final, pii = security.redact_pii(final)             # 輸出護欄：遮罩任何 PII
+    return {"answer": final, "trace": trace, "pii_redacted": [t for t, _ in pii]}
 
 
 @app.post("/vlm")

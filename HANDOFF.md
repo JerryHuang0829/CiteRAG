@@ -7,7 +7,8 @@
 - 階段：**W0–W3 ✅ ＋ 工程強化 ✅ ＋ RAG 優化 ①②③ ✅ ＋ 結構化 DB 層 ✅ ＋ pgvector ✅ ＋ 多輪對話記憶 ✅ ＋ 數值幻覺護欄 ✅ ＋ E3 打包 ✅ ＋ CI gate ✅ ＋ 全專案稽核 43 確認問題全修 ✅ ＋ git/GitHub 上線（JerryHuang0829/CiteRAG）＋ 雲端 LLM router ✅（`CITERAG_LLM_BACKEND=cloud`：Gemini Flash-Lite 主 + Groq fallback；離線測試 63 passed）**。
   ＋ Dockerfile/HF 部署檔 ✅ → **HF Spaces 上線 ✅ live: https://jerry0829-citerag.hf.space/app**（雲端生成 Gemini+Groq、embedding/檢索本機；VLM 分頁雲端自動隱藏）。
   ＋ **P2.1 eval-as-CI-gate ✅**：`slo.py`（凍結 SLO）+ `eval_gate.py`（低於門檻 exit 1）。檢索 gate recall 1.000/prec 0.432 PASS、mutation 驗「會擋」；生成 gate 走雲端 backend + retry 退避/節流（n=5 corr/faith 1.00）；`ci.yml` 3 jobs（test + retrieval-gate 每 PR + generation-gate nightly/手動）。
-  下一步：① 你在 **GitHub repo Settings→Secrets 加 `GEMINI_API_KEY`/`GROQ_API_KEY`**（給 nightly 生成 gate）② push `origin`(--force；LFS 已重寫歷史)+`space` ③ **P2.2 安全包**（prompt-injection 紅隊 + PII/Presidio + OWASP）④ E2 case study。
+  ＋ **P2.2 安全包 ✅**：`security.py`（台灣 PII 偵測——身分證內政部檢核碼/信用卡 Luhn/手機/Email + 遮罩、injection 啟發式）接進 `/ask`+`/agent` 輸出護欄；`redteam.py`（5 攻擊對映 OWASP LLM Top-10，確定性判定，實測 block_rate **1.000**）進 nightly CI；`docs/security.md` 對映+誠實邊界；離線 **72 passed**。
+  下一步：① 你在 **GitHub Settings→Secrets 加 `GEMINI_API_KEY`/`GROQ_API_KEY`** ② push `origin`(--force；LFS)+`space` ③ **P2.3 E2 case study**（工程故事+失敗案例敘事）④ 選：開個改壞品質/安全的 PR 讓 gate 變紅→截圖當面試證據。
 - **全專案稽核（多代理 + 對抗式驗證，43 確認問題全修）**：HIGH＝①多輪 history 數字污染數值護欄（grounded 改只收本輪題目+工具結果，不含 history assistant）②findata explicit-year partial-year 誤標「全年」+永久快取（改標「前N季累計」+ 只磁碟快取完整四季）；MEDIUM＝search_filings.last_pages 全域單例 race（改結構化回傳就地取頁碼）、core.py 重型依賴 lazy import（確定性測試免載 ML 堆疊，雲端 2.5s）、findata/pgstore 補離線測試、verify_numbers 接入確定性狀態機測試、BM25 快取 re-ingest 失效、422 前後端契約一致 + 前端 history 中毒過濾；LOW/nit＝verify_numbers 年份豁免改上下文感知（緊鄰「年」才豁免）、千分位嚴格三位、verify_citations 裸式多頁/範圍、_resolve_code 最長匹配、_sum 容錯等。雲端測試 **36→55 passed**。
 
 ---
