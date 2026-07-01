@@ -102,6 +102,19 @@ def test_gemini_payload_role_and_json_shape(monkeypatch):
     assert "S" not in parts                                              # system 不混進 contents
 
 
+def test_cloud_vlm_gemini_inline_image(monkeypatch):
+    import base64
+    _set_cloud(monkeypatch)
+    gem = {"candidates": [{"content": {"parts": [{"text": "圖中文字"}]}}]}
+    post, cap = _fake_post(gem, None)
+    monkeypatch.setattr(llm_router, "_post", post)
+    b64 = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * 20).decode()   # PNG magic
+    assert llm_router.route_vlm(b64, "讀圖") == "圖中文字"
+    _url, body, _h = cap[0]
+    part = body["contents"][0]["parts"][1]["inline_data"]
+    assert part["mime_type"] == "image/png" and part["data"] == b64        # magic 判 mime + 圖傳對
+
+
 def test_groq_payload_json_and_auth(monkeypatch):
     _set_cloud(monkeypatch)
     post, cap = _fake_post(_http429(), {"choices": [{"message": {"content": '{"a":1}'}}]})

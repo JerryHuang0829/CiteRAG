@@ -84,8 +84,9 @@ def health():
     cloud = backend == "cloud"
     # 雲端時回實際模型（Gemini + Groq fallback），並標 VLM 不可用（Gemma 讀圖走本機 Ollama，雲端無 GPU/Ollama）
     gen = f"{llm_router.GEMINI_MODEL} +{llm_router.GROQ_MODEL}(fallback)" if cloud else core.GEN_MODEL
+    vlm = llm_router.GEMINI_MODEL if cloud else core.VLM_MODEL     # 雲端讀圖走 Gemini vision（多模態）
     return {"status": "ok", "llm_backend": backend, "gen_model": gen,
-            "vlm_model": core.VLM_MODEL, "vlm_available": not cloud,
+            "vlm_model": vlm, "vlm_available": True,
             "rerank_model": core.RERANK_MODEL if core.USE_RERANK else None,
             "use_rerank": core.USE_RERANK, "top_k": core.TOP_K}
 

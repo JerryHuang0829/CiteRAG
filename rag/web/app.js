@@ -157,7 +157,7 @@ async function runVlm() {
   if (!vlmDataUrl) { out.innerHTML = `<div class="error">請先上傳圖片。</div>`; return; }
   const btn = $("#vlm-btn");
   btn.disabled = true;
-  const stop = showLoading(out, "Gemma 讀圖中（本地 CPU，約 30–90 秒）…");
+  const stop = showLoading(out, "讀圖中…");
   const q = $("#vlm-q").value.trim();
   const { ok, status, data } = await postJSON("/vlm", { image_b64: vlmDataUrl, question: q || null });
   stop();

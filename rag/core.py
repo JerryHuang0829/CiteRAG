@@ -504,6 +504,12 @@ def _ollama_chat(messages: list[dict], as_json: bool = False) -> str:
 
 
 def vlm_b64(b64: str, question: str = "請讀出圖片中的所有文字與數值。") -> str:
+    # 讀圖入口：依 CITERAG_LLM_BACKEND 路由（本機 Gemma / cloud Gemini vision）
+    import llm_router
+    return llm_router.route_vlm(b64, question)
+
+
+def _ollama_vlm(b64: str, question: str = "請讀出圖片中的所有文字與數值。") -> str:
     # 視覺模型（Gemma）讀 base64 影像 → 文字（API 端點與 read_image 共用）
     payload = {
         "model": VLM_MODEL, "prompt": question, "images": [b64], "stream": False,

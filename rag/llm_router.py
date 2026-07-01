@@ -125,3 +125,41 @@ def route_chat(messages: list[dict], as_json: bool = False) -> str:
         return _cloud_chat(messages, as_json)
     import core
     return core._ollama_chat(messages, as_json)
+
+
+def _gemini_vlm(b64: str, question: str) -> str:
+    key = _getenv("GEMINI_API_KEY")
+    if not key:
+        raise CloudLLMError("缺 GEMINI_API_KEY")
+    import base64 as _b
+    try:
+        head = _b.b64decode(b64[:8])[:4]                      # 由 magic bytes 判 mime
+    except Exception:
+        head = b""
+    mime = "image/png" if head.startswith(b"\x89PNG") else ("image/jpeg" if head[:2] == b"\xff\xd8" else "image/png")
+    body = {"contents": [{"parts": [
+        {"text": question},
+        {"inline_data": {"mime_type": mime, "data": b64}}]}]}
+    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+           f"{GEMINI_MODEL}:generateContent?key={key}")
+    import time
+    for i in range(3):                                         # Gemini free tier 偶發 503，退避重試（VLM 無 fallback）
+        try:
+            data = _post(url, body, {})
+        except (urllib.error.URLError, OSError) as e:
+            if i < 2:
+                time.sleep(2 * (i + 1))
+                continue
+            raise CloudLLMError(f"Gemini vision 連線失敗（重試 3 次）：{str(e)[:120]}") from e
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, TypeError) as e:
+            raise CloudLLMError(f"Gemini vision 回應異常：{str(data)[:200]}") from e
+
+
+def route_vlm(b64: str, question: str) -> str:
+    # 讀圖：cloud 走 Gemini vision（多模態），ollama 走本機 Gemma
+    if _backend() == "cloud":
+        return _gemini_vlm(b64, question)
+    import core
+    return core._ollama_vlm(b64, question)
