@@ -30,3 +30,6 @@
 {"id": "tsmc_ni", "question": "台積電2022年以美元計算的稅後淨利是多少？", "answerable": true, "gold": ["340"], "category": "factual"}
 {"id": "tsmc_eps", "question": "台積電2022年每股盈餘（EPS）是多少？", "answerable": true, "gold": ["39.20"], "category": "factual"}
 {"id": "tsmc_chair", "question": "台積電的董事長是誰？", "answerable": true, "gold": ["劉德音"], "category": "factual"}
+{"id": "cimc_rev", "question": "台泥2022年的全年合併營收是多少？", "answerable": true, "gold": ["1,139.3", "1139.3"], "category": "factual"}
+{"id": "cimc_ni", "question": "台泥2022年的稅後淨利是多少？", "answerable": true, "gold": ["54億"], "category": "factual"}
+{"id": "honhai_chair", "question": "鴻海的董事長是誰？", "answerable": true, "gold": ["劉揚偉"], "category": "factual"}
