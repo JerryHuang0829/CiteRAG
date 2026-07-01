@@ -1,0 +1,5 @@
+# P3-A 選配依賴（LangGraph 版 agent + tracing）——不進核心 requirements/Docker，保持部署精簡。
+# 安裝：pip install -r requirements-langgraph.txt
+langgraph==1.2.7
+langchain-core==1.4.8
+# tracing（P3-A 後續）：langfuse==<pin>
