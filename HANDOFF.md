@@ -11,7 +11,8 @@
   ＋ **P2.3 case study ✅**：`docs/case_study.md` 升級（隱私分層 / CD / eval-CI-gate / OWASP + 3 個新 failure case #6-8 + §9 履歷 bullet）。**→ P2 全部完成（P2.1 品質 gate + P2.2 安全 + P2.3 敘事）。**
   ＋ **P3-A ✅ LangGraph agent + Langfuse tracing**：`agent_lg.py`（LangGraph StateGraph，與手刻並存、4 等價測試 + mutation）+ `@observe` tracing（env-gated、pytest 下自動關；修 conda SSL_CERT_FILE→certifi bug）+ ADR。langgraph/langfuse 選配依賴不進核心/Docker。真實 trace 已送 Langfuse。離線 76 passed。
   ＋ **P3-B ✅ 真實年報 corpus**：`fetch_corpus.py`（TWSE doc.twse 三步抓年報 F04）→ 4 家指標公司年報加進 data/ → **78 → 9,579 chunks（123×）**。檢索 eval 在真實規模下 **recall 仍 1.000/prec 0.432 PASS**（robust）、新公司內容端到端帶頁碼答對（台積電營收 758億美元 p.5）。golden **已補 4 題台積電年報 factual Q**（美元營收/淨利/EPS/董事長，事實+可檢索性驗證，29 題 recall 仍 1.000、生成答對帶頁碼）；其他公司未覆蓋。年報 PDF 走 LFS。
-  下一步：① 你 **GitHub Settings→Secrets 加 key** ② push `origin`(--force；LFS，含年報 ~28MB)+`space`（HF build 較久=重 embed 9.6k chunks）③ **P3-C observability**（Grafana 系統 metrics / /metrics）④ 選：紅色 CI 截圖 / 擴 golden 到其他公司。
+  ＋ **P3-C ✅ 系統觀測性**：`api.py` 接 `prometheus-fastapi-instrumentator` 暴露 `/metrics`（請求數/p95 延遲/狀態/in-progress），與 Langfuse LLM trace 兩層互補；`docs/observability.md`（含 Grafana 本機/Cloud 接線範例）；`tests/test_metrics.py`；77 passed。**→ P3 三塊全完成（A LangGraph+tracing / B 真實年報 corpus / C observability）。**
+  下一步：① 你 **GitHub Settings→Secrets 加 key** ② push `origin`(--force；LFS ~28MB)+`space` ③ 選：接 Grafana 儀表板 / 紅色 CI 截圖 / **開始投履歷**（作品已很完整）。
 - **全專案稽核（多代理 + 對抗式驗證，43 確認問題全修）**：HIGH＝①多輪 history 數字污染數值護欄（grounded 改只收本輪題目+工具結果，不含 history assistant）②findata explicit-year partial-year 誤標「全年」+永久快取（改標「前N季累計」+ 只磁碟快取完整四季）；MEDIUM＝search_filings.last_pages 全域單例 race（改結構化回傳就地取頁碼）、core.py 重型依賴 lazy import（確定性測試免載 ML 堆疊，雲端 2.5s）、findata/pgstore 補離線測試、verify_numbers 接入確定性狀態機測試、BM25 快取 re-ingest 失效、422 前後端契約一致 + 前端 history 中毒過濾；LOW/nit＝verify_numbers 年份豁免改上下文感知（緊鄰「年」才豁免）、千分位嚴格三位、verify_citations 裸式多頁/範圍、_resolve_code 最長匹配、_sum 容錯等。雲端測試 **36→55 passed**。
 
 ---

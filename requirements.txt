@@ -14,6 +14,7 @@ gradio==6.19.0               # app.py 三分頁 UI
 fastapi==0.138.0             # api.py REST API + 自製前端
 uvicorn==0.49.0
 pydantic==2.13.4
+prometheus-fastapi-instrumentator==8.0.2   # /metrics（Prometheus 系統觀測性；配 Grafana）
 
 # 可選：pgvector 向量資料庫後端（CITERAG_PGVECTOR=1 時才需要；預設用 FAISS）
 # psycopg2-binary==2.9.12

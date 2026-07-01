@@ -18,6 +18,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 
 import agent
@@ -148,3 +149,8 @@ def _web_css():
 def _web_js():
     return Response((_WEB / "app.js").read_text(encoding="utf-8"),
                     media_type="application/javascript; charset=utf-8")
+
+
+# 系統層觀測性：暴露 /metrics（Prometheus 格式：請求數/延遲/狀態碼/in-progress），供 Grafana 抓取。
+# 與 Langfuse 的 LLM 語意層 trace 互補。放在所有路由後 instrument+expose。
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
