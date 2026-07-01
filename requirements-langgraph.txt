@@ -2,4 +2,4 @@
 # 安裝：pip install -r requirements-langgraph.txt
 langgraph==1.2.7
 langchain-core==1.4.8
-# tracing（P3-A 後續）：langfuse==<pin>
+langfuse==4.12.0          # tracing（env-gated：有 LANGFUSE_PUBLIC_KEY 才開）

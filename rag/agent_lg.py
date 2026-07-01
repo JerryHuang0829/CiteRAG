@@ -8,7 +8,9 @@
 langgraph 為選配依賴（requirements-langgraph.txt），不進核心/Docker。用法（rag/）：python agent_lg.py "..."
 """
 import json
+import os
 import sys
+from pathlib import Path
 from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -17,6 +19,30 @@ import agent as A          # 複用 SYSTEM / TOOLS / MAX_TURNS / 工具函式（
 import core
 
 sys.stdout.reconfigure(encoding="utf-8")
+
+
+# ---- Langfuse tracing（選配、env-gated）：有 LANGFUSE_PUBLIC_KEY 才開；無則 no-op，零開銷/零警告、不影響測試 ----
+def _load_langfuse_env():
+    env = Path(__file__).resolve().parent.parent / ".env"
+    try:
+        for line in env.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("LANGFUSE_") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+    except FileNotFoundError:
+        pass
+
+
+_load_langfuse_env()
+TRACE_ON = bool(os.environ.get("LANGFUSE_PUBLIC_KEY"))
+if TRACE_ON:
+    from langfuse import observe as _observe
+    def _obs(name):
+        return _observe(name=name)
+else:
+    def _obs(name):
+        return lambda fn: fn
 
 _ASK_TOOL = ("你的答案出現未經工具查證的數字 {n}，可能是臆測。請務必先呼叫對應工具"
              "（stock_price 查股價、lookup_metric 查財報、compare 跨公司比較）取得真實數值，"
@@ -37,6 +63,7 @@ class AgentState(TypedDict):
     pending_raw: str
 
 
+@_obs("agent")
 def _agent_node(state: AgentState) -> dict:
     raw = core.chat(state["messages"], as_json=True)
     try:
@@ -54,6 +81,7 @@ def _route_after_agent(state: AgentState) -> str:
     return "finalize" if state["pending"].get("action") == "final" else "tools"
 
 
+@_obs("tools")
 def _tools_node(state: AgentState) -> dict:
     step, raw = state["pending"], state["pending_raw"]
     msgs = list(state["messages"])
@@ -98,6 +126,7 @@ def _tools_node(state: AgentState) -> dict:
     }
 
 
+@_obs("finalize")
 def _finalize_node(state: AgentState) -> dict:
     step, forced = state["pending"], state["steps"] > A.MAX_TURNS
     if forced and step.get("action") != "final":       # 逾步強制收尾：逼一次 final
@@ -137,6 +166,7 @@ def _build():
 _GRAPH = _build()
 
 
+@_obs("agent_lg.run")
 def run(user_msg: str, history=None):
     """與 agent.run 同介面：回 (final_answer, trace)。history＝前幾輪 [{role,content}]。"""
     messages = [{"role": "system", "content": A.SYSTEM}]
@@ -159,6 +189,10 @@ def main():
         for t in trace:
             print(f"[TOOL] {t['tool']}({t['args']}) -> {str(t['result'])[:90]}")
         print(f"\n[FINAL] {final}")
+        if TRACE_ON:
+            from langfuse import get_client
+            get_client().flush()
+            print("[trace] 已送出到 Langfuse")
 
 
 if __name__ == "__main__":
