@@ -12,6 +12,7 @@
 """
 import base64
 import binascii
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -76,7 +77,13 @@ def _generic_error(request, exc):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "gen_model": core.GEN_MODEL, "vlm_model": core.VLM_MODEL,
+    import llm_router
+    backend = os.environ.get("CITERAG_LLM_BACKEND", "ollama").strip().lower()
+    cloud = backend == "cloud"
+    # 雲端時回實際模型（Gemini + Groq fallback），並標 VLM 不可用（Gemma 讀圖走本機 Ollama，雲端無 GPU/Ollama）
+    gen = f"{llm_router.GEMINI_MODEL} +{llm_router.GROQ_MODEL}(fallback)" if cloud else core.GEN_MODEL
+    return {"status": "ok", "llm_backend": backend, "gen_model": gen,
+            "vlm_model": core.VLM_MODEL, "vlm_available": not cloud,
             "rerank_model": core.RERANK_MODEL if core.USE_RERANK else None,
             "use_rerank": core.USE_RERANK, "top_k": core.TOP_K}
 

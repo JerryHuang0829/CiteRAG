@@ -171,11 +171,17 @@ async function loadHealth() {
   const el = $("#chips");
   try {
     const h = await (await fetch("/health")).json();
-    const chips = [`<span class="chip chip-on">● 線上</span>`,
-      `<span class="chip">LLM ${escapeHtml(h.gen_model || "?")}</span>`,
-      `<span class="chip">VLM ${escapeHtml(h.vlm_model || "?")}</span>`];
+    const cloud = h.llm_backend === "cloud";
+    const chips = [`<span class="chip chip-on">● 線上${cloud ? " · 雲端" : ""}</span>`,
+      `<span class="chip">LLM ${escapeHtml(h.gen_model || "?")}</span>`];
+    if (h.vlm_available !== false) chips.push(`<span class="chip">VLM ${escapeHtml(h.vlm_model || "?")}</span>`);
     if (h.rerank_model) chips.push(`<span class="chip">rerank ${escapeHtml(String(h.rerank_model).split("/").pop())}</span>`);
     el.innerHTML = chips.join("");
+    // VLM（Gemma 讀圖）走本機 Ollama；雲端無此能力 → 隱藏分頁，避免訪客點了報錯
+    if (h.vlm_available === false) {
+      const vt = document.querySelector('.nav-item[data-tab="vlm"]'); if (vt) vt.style.display = "none";
+      const vp = document.querySelector("#panel-vlm"); if (vp) vp.remove();
+    }
   } catch (e) {
     el.innerHTML = `<span class="chip chip-muted">API 未連線</span>`;
   }
