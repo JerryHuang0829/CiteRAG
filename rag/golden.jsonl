@@ -26,3 +26,7 @@
 {"id": "r1", "question": "台積電 2023 年的 EPS 是多少？", "answerable": false, "gold": [], "category": "refuse"}
 {"id": "r2", "question": "鴻海 2025 年的營收預估是多少？", "answerable": false, "gold": [], "category": "refuse"}
 {"id": "r3", "question": "鴻海 2023 年全年的 EPS 數字是多少？", "answerable": false, "gold": [], "category": "refuse"}
+{"id": "tsmc_rev", "question": "台積電2022年以美元計算的全年合併營收是多少？", "answerable": true, "gold": ["758"], "category": "factual"}
+{"id": "tsmc_ni", "question": "台積電2022年以美元計算的稅後淨利是多少？", "answerable": true, "gold": ["340"], "category": "factual"}
+{"id": "tsmc_eps", "question": "台積電2022年每股盈餘（EPS）是多少？", "answerable": true, "gold": ["39.20"], "category": "factual"}
+{"id": "tsmc_chair", "question": "台積電的董事長是誰？", "answerable": true, "gold": ["劉德音"], "category": "factual"}

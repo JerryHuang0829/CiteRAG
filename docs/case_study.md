@@ -80,7 +80,7 @@
 
 ## 7. 限制與下一步（誠實）
 
-- 語料已從 toy（78 chunks）**擴充至 9,579 個真實年報 chunks**（4 家指標公司台積電/鴻海/聯發科/台泥，自 TWSE `doc.twse.com.tw` 抓取，見 `rag/fetch_corpus.py`；年報 F04 文字乾淨，台積電年報單份 22.5 萬中文字）。**檢索在 123× 規模下 context_recall 仍 1.000**（hybrid+reranker 對真實噪音 robust），新公司內容端到端答得出帶頁碼答案（台積電 2022 合併營收 758 億美元 p.5）。**誠實限制**：golden set 目前仍以 2 份原始文件為主、尚未涵蓋年報內容 → 擴 golden Qs 才是「在真實語料上做完整 eval」的下一步；測試集 n 仍偏小、CI 寬。
+- 語料已從 toy（78 chunks）**擴充至 9,579 個真實年報 chunks**（4 家指標公司台積電/鴻海/聯發科/台泥，自 TWSE `doc.twse.com.tw` 抓取，見 `rag/fetch_corpus.py`；年報 F04 文字乾淨，台積電年報單份 22.5 萬中文字）。**檢索在 123× 規模下 context_recall 仍 1.000**（hybrid+reranker 對真實噪音 robust），新公司內容端到端答得出帶頁碼答案（台積電 2022 合併營收 758 億美元 p.5）。golden set **已擴入 4 題台積電年報 factual Qs**（美元營收 758 億 / 稅後淨利 340 億 / EPS 39.20 / 董事長劉德音，事實正確性與可檢索性皆驗證），29 題 answerable 下 **context_recall 仍 1.000**、生成答對帶頁碼。**誠實限制**：年報 golden 仍集中台積電、其他公司未覆蓋；測試集 n 仍偏小、CI 寬。
 - 安全：**不宣稱「injection-proof」**（沒有系統是）——這是 defense-in-depth + 量測 block_rate；injection 偵測是啟發式、可被繞過；PII 為 regex+檢核碼（高精準、非 100% 召回）；攻擊集小。
 - 雲端 demo 免費 tier 48h 無流量會睡、首次冷啟動數秒；VLM 讀圖走本機 Ollama、雲端不含。
 - 規劃中：LangGraph + tracing（agent 可觀測性）、Grafana/Phoenix 儀表板、Terraform/Cloud Run（IaC）。
