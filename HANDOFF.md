@@ -10,7 +10,8 @@
   ＋ **P2.2 安全包 ✅**：`security.py`（台灣 PII 偵測——身分證內政部檢核碼/信用卡 Luhn/手機/Email + 遮罩、injection 啟發式）接進 `/ask`+`/agent` 輸出護欄；`redteam.py`（5 攻擊對映 OWASP LLM Top-10，確定性判定，實測 block_rate **1.000**）進 nightly CI；`docs/security.md` 對映+誠實邊界；離線 **72 passed**。
   ＋ **P2.3 case study ✅**：`docs/case_study.md` 升級（隱私分層 / CD / eval-CI-gate / OWASP + 3 個新 failure case #6-8 + §9 履歷 bullet）。**→ P2 全部完成（P2.1 品質 gate + P2.2 安全 + P2.3 敘事）。**
   ＋ **P3-A ✅ LangGraph agent + Langfuse tracing**：`agent_lg.py`（LangGraph StateGraph，與手刻並存、4 等價測試 + mutation）+ `@observe` tracing（env-gated、pytest 下自動關；修 conda SSL_CERT_FILE→certifi bug）+ ADR。langgraph/langfuse 選配依賴不進核心/Docker。真實 trace 已送 Langfuse。離線 76 passed。
-  下一步：① 你 **GitHub Settings→Secrets 加 `GEMINI_API_KEY`/`GROQ_API_KEY`** ② push `origin`(--force；LFS)+`space` ③ **P3 續**：P3-C observability（Grafana 系統 metrics）/ P3-B 真實 MOPS corpus。④ 選：紅色 CI 證據截圖。
+  ＋ **P3-B ✅ 真實年報 corpus**：`fetch_corpus.py`（TWSE doc.twse 三步抓年報 F04）→ 4 家指標公司年報加進 data/ → **78 → 9,579 chunks（123×）**。檢索 eval 在真實規模下 **recall 仍 1.000/prec 0.432 PASS**（robust）、新公司內容端到端帶頁碼答對（台積電營收 758億美元 p.5）。誠實限制：golden 尚未涵蓋年報內容（下一步）。年報 PDF 走 LFS。
+  下一步：① 你 **GitHub Settings→Secrets 加 key** ② push `origin`(--force；LFS，含年報 ~28MB)+`space`（HF build 會較久=重 embed 9.6k chunks）③ 選：擴 golden 涵蓋年報 / P3-C observability / 紅色 CI 截圖。
 - **全專案稽核（多代理 + 對抗式驗證，43 確認問題全修）**：HIGH＝①多輪 history 數字污染數值護欄（grounded 改只收本輪題目+工具結果，不含 history assistant）②findata explicit-year partial-year 誤標「全年」+永久快取（改標「前N季累計」+ 只磁碟快取完整四季）；MEDIUM＝search_filings.last_pages 全域單例 race（改結構化回傳就地取頁碼）、core.py 重型依賴 lazy import（確定性測試免載 ML 堆疊，雲端 2.5s）、findata/pgstore 補離線測試、verify_numbers 接入確定性狀態機測試、BM25 快取 re-ingest 失效、422 前後端契約一致 + 前端 history 中毒過濾；LOW/nit＝verify_numbers 年份豁免改上下文感知（緊鄰「年」才豁免）、千分位嚴格三位、verify_citations 裸式多頁/範圍、_resolve_code 最長匹配、_sum 容錯等。雲端測試 **36→55 passed**。
 
 ---
