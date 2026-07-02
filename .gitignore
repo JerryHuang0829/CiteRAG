@@ -10,8 +10,11 @@ venv/
 hf_cache/
 models/
 
-# --- 索引（ingest.py 產生的衍生檔；clone 後執行 python rag/ingest.py 重建）---
-index/
+# --- 索引：commit 已建好的索引（HF 免費 build 記憶體無法 embed 9.6k chunks，故不在 build 時重建）---
+#     faiss.index 走 LFS（見 .gitattributes）；其餘 index/ 衍生檔仍忽略
+index/*
+!index/chunks.jsonl
+!index/faiss.index
 
 # --- 祕密 / 環境變數 ---
 .env

@@ -1,5 +1,7 @@
-# 衍生/快取（image 內 ingest.py 重建）
-index/
+# 快取（image 內下載）。index 改為 commit 進 repo（HF 免費 build 記憶體無法 embed 9.6k chunks），只留這兩檔進 build context
+index/*
+!index/chunks.jsonl
+!index/faiss.index
 hf_cache/
 models/
 **/__pycache__/

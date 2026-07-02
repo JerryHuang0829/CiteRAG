@@ -18,18 +18,19 @@ WORKDIR /home/user/app
 COPY --chown=user:user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 程式 + 語料（.dockerignore 已排除 index/hf_cache/.env/tests/w0）
+# 程式 + 語料 + 預建索引（index/ 已 commit；HF 免費 build 記憶體無法 embed 9.6k chunks，故不在 build 時重建）
 COPY --chown=user:user rag/ rag/
 COPY --chown=user:user data/ data/
+COPY --chown=user:user index/ index/
 
-# WORKDIR 由 root 建立；切 user 前確保 app 目錄（含待建的 hf_cache/index）可寫
-RUN mkdir -p hf_cache index && chown -R user:user /home/user/app
+# WORKDIR 由 root 建立；切 user 前確保 app 目錄（含待建的 hf_cache）可寫
+RUN mkdir -p hf_cache && chown -R user:user /home/user/app
 
 USER user
 
-# build 時建索引（下載 bge-small-zh + 嵌入 78 chunks → FAISS）+ 暖機 reranker（bge-reranker-base）
-# 一次 retrieve 觸發 reranker 下載並快取進 image，避免 runtime 首次請求才下載（~140s + HF 限速會 500）
-RUN cd rag && python ingest.py && python -c "import core; core.retrieve('暖機載入 reranker 模型', k=3)"
+# 索引已 commit，不重跑 embedding。build 時只預先下載並快取模型：
+# bge-small-zh（查詢嵌入）+ bge-reranker-base（重排），避免 runtime 首次請求才下載（~140s + HF 限速會 500）
+RUN cd rag && python -c "import core; core.get_embedder(); core.get_reranker(core.RERANK_MODEL)"
 
 EXPOSE 7860
 # FastAPI：/app 前端 + /ask /agent（cloud 生成）；/health 不碰 LLM。VLM /vlm 走本機 Ollama，雲端 demo 不含。
