@@ -1,0 +1,35 @@
+{
+  "uid": "citerag",
+  "title": "CiteRAG Observability",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {"from": "now-15m", "to": "now"},
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1, "title": "Request rate (req/s)", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(http_requests_total[1m]))", "legendFormat": "total", "refId": "A"}]
+    },
+    {
+      "id": 2, "title": "p95 latency (s)", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A"}]
+    },
+    {
+      "id": 3, "title": "Requests by handler (req/s)", "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (handler) (rate(http_requests_total[1m]))", "legendFormat": "{{handler}}", "refId": "A"}]
+    },
+    {
+      "id": 4, "title": "Error ratio (5xx)", "type": "stat",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(http_requests_total{status=\"5xx\"}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit"}}
+    }
+  ]
+}

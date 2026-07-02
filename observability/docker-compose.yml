@@ -1,0 +1,23 @@
+# 系統層觀測性 sidecar：Prometheus 抓 CiteRAG /metrics + Grafana 儀表板（自動 provision）。
+# 用法：先在 rag/ 跑 `uvicorn api:app --port 8000`，再 `docker compose -f observability/docker-compose.yml up -d`
+# → Grafana http://localhost:3000（匿名 Admin）看 "CiteRAG Observability" 儀表板；Prometheus http://localhost:9090。
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ADMIN_PASSWORD=citerag
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]

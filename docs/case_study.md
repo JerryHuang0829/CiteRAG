@@ -64,7 +64,7 @@
 
 - **雲端 LLM router**（`CITERAG_LLM_BACKEND` 切換）：Gemini 2.5 Flash-Lite 主 → 失敗/429/壞 JSON 自動 fallback Groq；純 `urllib` 零新依賴。實測：強制主 provider 失敗會自動切備援並正常作答。
 - **CD（持續部署）**：Dockerfile（slim、build 時建索引 + 預載 reranker）→ **Hugging Face Spaces 免費 CPU、$0/月、scale-to-zero**、live URL。
-- **CI + eval-gate（P2.1）**：GitHub Actions 3 jobs — 確定性測試 + **檢索品質 gate（每 PR 擋）** + 生成/安全 gate（nightly）。門檻凍結於 `slo.py`，**mutation 驗證「會擋」**（門檻拉高→gate 紅燈 exit 1）。
+- **CI + eval-gate（P2.1）**：GitHub Actions 3 jobs — 確定性測試 + **檢索品質 gate（每 PR 擋）** + 生成/安全 gate（nightly）。門檻凍結於 `slo.py`。**gate 抓真實 regression 實證**：關掉 reranker（真實退步）→ `context_recall 1.000→0.812 < SLO 0.90` → **exit 1 擋下**（GitHub Actions 上即紅燈擋 PR）——證明「gate 真的會擋、非裝飾」。
 - **安全 / OWASP LLM Top-10（P2.2）**：PII 偵測+遮罩護欄接進 `/ask`+`/agent`；紅隊測試（注入 canary/系統提示外洩/越獄捏造/PII 外洩）量 block_rate；對映與誠實邊界見 `docs/security.md`。
 - **測試**：72 個確定性測試（含 PII/injection/紅隊判定），跑在 CI。
 

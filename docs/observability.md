@@ -13,18 +13,12 @@ FastAPI app 暴露 `/metrics`（Prometheus 曝露格式），含 `http_requests_
 ## 接 Grafana（把 /metrics 變儀表板）
 兩條路，二選一：
 
-**A. 本機 Prometheus + Grafana（零帳號、docker）**
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: citerag
-    metrics_path: /metrics
-    static_configs:
-      - targets: ["host.docker.internal:8000"]
-```
+**A. 本機 Prometheus + Grafana（零帳號、docker；已備好可跑、實測 provision 成功）**
+`observability/` 內有現成 docker-compose + 自動 provision 的 Prometheus datasource + **CiteRAG 儀表板 JSON**（request rate / p95 latency / by-handler / 5xx error ratio）。已實測：stack 起得來、Grafana(13.1) 成功載入 datasource + dashboard。
 ```bash
-docker run -d -p 9090:9090 -v $PWD/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
-docker run -d -p 3000:3000 grafana/grafana     # 加 Prometheus data source → 建 dashboard
+cd rag && uvicorn api:app --port 8000                        # 先跑 app（暴露 /metrics）
+docker compose -f observability/docker-compose.yml up -d      # Prometheus + Grafana（自動 provision）
+# → Grafana http://localhost:3000（匿名 Admin）→ "CiteRAG Observability" 儀表板
 ```
 
 **B. Grafana Cloud（免費、可分享連結）**
